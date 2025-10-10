@@ -46,7 +46,7 @@ export default function Home() {
             
           </Box>
           <Box className="flex-1 justify-center items-center h-[20px] w-[300px] lg:h-[160px] lg:w-[400px]">
-            <Text className='font-bold text-3xl'>PenPad</Text>
+            <Text className='font-bold text-5xl'>PenPad</Text>
             <Button
               size="sm"
               className="bg-primary-500 px-6 py-2 rounded-full"

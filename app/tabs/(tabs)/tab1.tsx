@@ -32,18 +32,25 @@ export default function Tab2() {
             <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
           </Link>
         </Box>
-        <Text></Text>
+        
         <Box className='items-center w-full rounded-x1'>
-        <Button
-            className='w-[50%]'
+        {/*<Button
+            className='w-[50%] rounded-x1'
             size="lg"
-            variant="outline"
+            variant="solid"
             action="primary"
             isDisabled={false}
             isFocusVisible={false}
             
           >
             <ButtonText>Sign in</ButtonText>
+          </Button>*/}
+          <Button
+            size="lg"
+            className="bg-primary-500 px-6 py-2 rounded-full"
+            variant='solid'
+          >
+            <ButtonText>  Sign In  </ButtonText>
           </Button>
           
           </Box>
