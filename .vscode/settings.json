@@ -1,0 +1,11 @@
+{
+  // Disable built-in CSS/SCSS unknown at-rule validation which doesn't know Tailwind directives
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+
+  // If using the Stylelint VS Code extension, prefer the workspace version
+  "stylelint.enable": true,
+  "stylelint.validate": ["css", "scss", "less", "postcss"],
+  "stylelint.packageManager": "npm"
+}
