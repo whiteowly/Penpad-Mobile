@@ -12,8 +12,8 @@ export default function ModalScreen() {
       <Box className="my-[30px] h-1 w-[80%]" />
       <EditScreenInfo path="app/modal.tsx" />
 
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
-      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
+      {/* Use a light status bar on android to account for the black space above the modal */}
+      <StatusBar style={Platform.OS === 'android' ? 'light' : 'auto'} />
     </Box>
   );
 }

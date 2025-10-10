@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "starter-kit-expo",
-    "slug": "starter-kit-expo",
+    "name": "PenPad ToDo",
+    "slug": "penpad-todo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "starterkitexpo",
+    "scheme": "ToDoLisss",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {

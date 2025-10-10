@@ -16,20 +16,20 @@ export default function TabLayout() {
       screenOptions={{
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        headerShown: useClientOnlyValue(false, false),
       }}
     >
       <Tabs.Screen
         name="tab1"
         options={{
-          title: 'Tab 1',
+          title: 'Login',
           tabBarIcon: ({ color }) => <TabBarIcon name="star-o" color={color} />,
         }}
       />
       <Tabs.Screen
         name="tab2"
         options={{
-          title: 'Tab 2',
+          title: 'Sign Up',
           tabBarIcon: ({ color }) => <TabBarIcon name="star-o" color={color} />,
         }}
       />
