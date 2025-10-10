@@ -27,21 +27,29 @@ export default function Tab2() {
         >
           <InputField placeholder="Enter Password" />
         </Input>
-        <Box className="items-start">
+        <Box className="items-end w-full">
           <Link href="/modal">
-            <LinkText className="text-primary-500">Forgot Password</LinkText>
+            <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
           </Link>
         </Box>
+        <Text></Text>
+        <Box className='items-center w-full rounded-x1'>
         <Button
-            size="xl"
-            variant="solid"
+            className='w-[50%]'
+            size="lg"
+            variant="outline"
             action="primary"
             isDisabled={false}
             isFocusVisible={false}
+            
           >
             <ButtonText>Sign in</ButtonText>
           </Button>
+          
+          </Box>
+          
       </VStack>
+      
     </Center>
   );
 }
