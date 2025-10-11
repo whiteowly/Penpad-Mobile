@@ -9,11 +9,13 @@ import { Box } from '@/components/ui/box';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useColorScheme } from 'react-native';
 
 import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
+import { Colors } from '@/constants/Colors';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 
 export default function Tab1() {
@@ -23,6 +25,7 @@ export default function Tab1() {
   const [user, setUser] = useState(auth.currentUser);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const colorScheme = useColorScheme();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -40,8 +43,8 @@ export default function Tab1() {
   const handleSignIn = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Navigate to main page on successful sign-in
-      router.replace('/main');
+      // Navigate to tab1 page on successful sign-in
+      router.replace('/tabs/tab1');
     } catch (error) {
       console.error(error);
       // Handle sign-in errors (e.g., show an alert)
@@ -49,7 +52,7 @@ export default function Tab1() {
   };
 
   if (user) {
-    router.replace('/main');
+    router.replace('/tabs/tab1');
     return null; // Or a loading spinner
   }
 
@@ -78,7 +81,7 @@ export default function Tab1() {
             <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
                   as={showPassword ? EyeIcon : EyeOffIcon}
-                  color={'#000000'}
+                  color={Colors[colorScheme ?? 'light'].text}
                 />
             </InputSlot>
         </Input>
