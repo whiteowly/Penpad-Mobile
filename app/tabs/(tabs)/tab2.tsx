@@ -5,11 +5,56 @@ import { Heading } from '@/components/ui/heading';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
-import { Input, InputField } from '@/components/ui/input';
+import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { Box } from '@/components/ui/box';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
+import { app } from '../../../firebaseConfig';
+import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 
 export default function Tab2() {
+  const auth = getAuth(app);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  const handlestate = () => {
+     setShowPassword((showState) => {
+      return !showState;
+     });
+  };
+   
+  const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+      alert("Passwords don't match");
+      return;
+    }
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+      await updateProfile(user, {
+        displayName: username,
+      });
+      router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
+    } catch (error) {
+      console.error('Sign up error:', error);
+      alert('Failed to create account. ' + (error as Error).message);
+    }
+  };
+
   return (
     <Center className="flex-1">
       <Heading className="font-bold text-2xl">Create Your Account</Heading>
@@ -24,7 +69,12 @@ export default function Tab2() {
           isInvalid={false}
           isReadOnly={false}
         >
-          <InputField placeholder="E-mail" />
+          <InputField
+            placeholder="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+          />
         </Input>
         <Input 
           variant="rounded"
@@ -33,7 +83,12 @@ export default function Tab2() {
           isInvalid={false}
           isReadOnly={false}
         >
-          <InputField placeholder="Username" />
+          <InputField
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
         </Input><Input 
           variant="rounded"
           size= "xl"
@@ -41,7 +96,17 @@ export default function Tab2() {
           isInvalid={false}
           isReadOnly={false}
         >
-          <InputField placeholder="Password" />
+          <InputField
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            type={showPassword ? 'text' : 'password'}/>
+            <InputSlot className="pr-3" onPress={handlestate}>
+                <InputIcon
+            as={showPassword ? EyeIcon : EyeOffIcon}
+            color={'#000000'}/>
+            </InputSlot>
         </Input><Input 
           variant="rounded"
           size= "xl"
@@ -49,7 +114,18 @@ export default function Tab2() {
           isInvalid={false}
           isReadOnly={false}
         >
-          <InputField placeholder="Confirm Password" />
+          <InputField
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            type={showPassword ? 'text' : 'password'}/>
+            <InputSlot className="pr-3" onPress={handlestate}>
+                <InputIcon
+            as={showPassword ? EyeIcon : EyeOffIcon}
+            color={'#000000'}/>
+            </InputSlot>
+          
         </Input>
         
         <Text></Text>
@@ -58,6 +134,7 @@ export default function Tab2() {
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
+            onPress={handleSignUp}
           >
             <ButtonText>  Sign Up  </ButtonText>
           </Button>
