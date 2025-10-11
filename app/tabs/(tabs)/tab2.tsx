@@ -17,6 +17,8 @@ import { app } from '../../../firebaseConfig';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from 'react-native';
 
 export default function Tab2() {
   const auth = getAuth(app);
@@ -26,6 +28,7 @@ export default function Tab2() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const colorScheme = useColorScheme();
 
   const handlestate = () => {
      setShowPassword((showState) => {
@@ -48,7 +51,7 @@ export default function Tab2() {
       await updateProfile(user, {
         displayName: username,
       });
-      router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
+  router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
     } catch (error) {
       console.error('Sign up error:', error);
       alert('Failed to create account. ' + (error as Error).message);
@@ -100,12 +103,12 @@ export default function Tab2() {
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             type={showPassword ? 'text' : 'password'}/>
             <InputSlot className="pr-3" onPress={handlestate}>
                 <InputIcon
             as={showPassword ? EyeIcon : EyeOffIcon}
-            color={'#000000'}/>
+            color={Colors[colorScheme ?? 'light'].text}/>
             </InputSlot>
         </Input><Input 
           variant="rounded"
@@ -118,12 +121,12 @@ export default function Tab2() {
             placeholder="Confirm Password"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             type={showPassword ? 'text' : 'password'}/>
             <InputSlot className="pr-3" onPress={handlestate}>
                 <InputIcon
             as={showPassword ? EyeIcon : EyeOffIcon}
-            color={'#000000'}/>
+            color={Colors[colorScheme ?? 'light'].text}/>
             </InputSlot>
           
         </Input>
