@@ -17,7 +17,7 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { Icon, MoonIcon, SunIcon, CalendarDaysIcon, CheckIcon } from '@/components/ui/icon';
-import { User, Home, ShoppingCart, ClockIcon, LogOut, MenuIcon } from 'lucide-react-native';
+import { User, Home, ShoppingCart, ClockIcon, LogOut, MenuIcon,  } from 'lucide-react-native';
 import React from 'react';
 import { Fab, FabIcon } from '@/components/ui/fab';
 import { toggleTheme, getCurrentTheme } from '@/lib/themeManager';
@@ -30,6 +30,7 @@ import { useRouter } from 'expo-router';
 
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../firebaseConfig';
+import { HStack } from '@/components/ui/hstack/index.web';
 
 
 function Sidebar() {
@@ -104,7 +105,7 @@ function Sidebar() {
               <Text>Tasks</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-             onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
+             onPress={() => {router.push('/reminder'); setShowDrawer(false);}}>
               <Icon
                 as={ClockIcon}
                 size="lg"
@@ -113,13 +114,15 @@ function Sidebar() {
               <Text>Reminders</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-            onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
+            onPress={() => {router.push('/upcoming'); setShowDrawer(false);}}>
               <Icon as={CalendarDaysIcon} size="lg" className="text-typography-600" />
               <Text>Upcoming</Text>
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
             
+          
+           
             
           </DrawerFooter>
         </DrawerContent>
