@@ -1,17 +1,12 @@
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '@/global.css';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Slot } from 'expo-router';
-import { Fab, FabIcon } from '@/components/ui/fab';
-import { MoonIcon, SunIcon } from '@/components/ui/icon';
+import { ColorModeProvider, useColorModeContext } from '../context/ColorModeContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -40,22 +35,21 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
+  return (
+    <ColorModeProvider>
+      <AppProviders />
+    </ColorModeProvider>
+  );
+}
+
+function AppProviders() {
+  const { colorMode } = useColorModeContext();
+  const themeValue = colorMode === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
     <GluestackUIProvider mode={colorMode}>
-      <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={themeValue}>
         <Slot />
-        <Fab
-          placement="top right"
-          className="top-6 right-6"
-          size="lg"
-          onPress={() =>
-            setColorMode(colorMode === 'dark' ? 'light' : 'dark')
-          }
-        >
-          <FabIcon as={colorMode === 'dark' ? SunIcon : MoonIcon} />
-        </Fab>
       </ThemeProvider>
     </GluestackUIProvider>
   );

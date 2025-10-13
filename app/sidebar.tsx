@@ -16,7 +16,7 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { Icon } from '@/components/ui/icon';
+import { Icon, MoonIcon, SunIcon } from '@/components/ui/icon';
 import {
   User,
   Home,
@@ -30,11 +30,13 @@ import { Fab, FabIcon } from '@/components/ui/fab';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 import { app } from '../firebaseConfig';
+import { useColorModeContext } from '../context/ColorModeContext';
 
 function Sidebar() {
   const [showDrawer, setShowDrawer] = useState(false);
   const auth = getAuth(app);
   const [user, setUser] = useState(auth.currentUser);
+  const { colorMode, toggleColorMode } = useColorModeContext();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -99,6 +101,17 @@ function Sidebar() {
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
+            <Button
+              className="w-full gap-2 mb-2"
+              variant="outline"
+              action="secondary"
+              onPress={toggleColorMode}
+            >
+              <ButtonText>
+                {colorMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              </ButtonText>
+              <ButtonIcon as={colorMode === 'dark' ? SunIcon : MoonIcon} />
+            </Button>
             <Button className="w-full gap-2" variant="outline" action="secondary">
               <ButtonText>Logout</ButtonText>
               <ButtonIcon as={LogOut} />
