@@ -17,7 +17,7 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { Icon, MoonIcon, SunIcon, CalendarDaysIcon, CheckIcon } from '@/components/ui/icon';
-import { User, Home, ShoppingCart, Wallet, LogOut, MenuIcon } from 'lucide-react-native';
+import { User, Home, ShoppingCart, ClockIcon, LogOut, MenuIcon } from 'lucide-react-native';
 import React from 'react';
 import { Fab, FabIcon } from '@/components/ui/fab';
 import { toggleTheme, getCurrentTheme } from '@/lib/themeManager';
@@ -98,19 +98,22 @@ function Sidebar() {
               <Icon as={User} size="lg" className="text-typography-600" />
               <Text>My Profile</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => {router.push('/tasks'); setShowDrawer(false);}}>
               <Icon as={Home} size="lg" className="text-typography-600" />
               <Text>Tasks</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+             onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
               <Icon
-                as={CheckIcon}
+                as={ClockIcon}
                 size="lg"
                 className="text-typography-600"
               />
-              <Text>Completed</Text>
+              <Text>Reminders</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
               <Icon as={CalendarDaysIcon} size="lg" className="text-typography-600" />
               <Text>Upcoming</Text>
             </Pressable>

@@ -49,7 +49,7 @@ export default function Tab1() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setPassword('');
-      router.replace('/main');
+      router.replace('/tasks');
     } catch (error) {
       console.error(error);
       alert('Login failed. ' + (error as Error).message);
