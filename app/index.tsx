@@ -9,6 +9,7 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/ui/icon';
 
+
 const FeatureCard = ({ iconSvg: IconSvg, name, desc }: any) => {
   return (
     <Box

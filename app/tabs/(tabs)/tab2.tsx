@@ -141,8 +141,13 @@ export default function Tab2() {
           >
             <ButtonText>  Sign Up  </ButtonText>
           </Button>
-          
           </Box>
+          <Box className='flex-row justify-center w-full'>
+          <Text className='text-sm text-typography-700'>Already got an account?</Text>
+          <Link onPress={() => router.push('/tabs/(tabs)/tab1')}>
+            <LinkText className='text-sm text-primary-500'> Login</LinkText>
+          </Link>
+        </Box>
           
       </VStack>
     

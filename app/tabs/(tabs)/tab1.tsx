@@ -28,9 +28,14 @@ export default function Tab1() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser?.email) {
+        setEmail(currentUser.email);
+      }
     });
+
     return unsubscribe;
   }, [auth]);
 
@@ -43,33 +48,39 @@ export default function Tab1() {
   const handleSignIn = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Navigate to tab1 page on successful sign-in
-      router.replace('/tabs/tab1');
+      setPassword('');
+      router.replace('/main');
     } catch (error) {
       console.error(error);
-      // Handle sign-in errors (e.g., show an alert)
+      alert('Login failed. ' + (error as Error).message);
     }
   };
 
-  if (user) {
-    router.replace('/tabs/tab1');
-    return null; // Or a loading spinner
-  }
-
+  const displayName = user?.displayName ?? user?.email ?? '';
   return (
     <Center className="flex-1">
       <VStack space="md" className="w-[80%]">
-        <Heading className="font-bold text-2xl self-center">Login</Heading>
+        <Heading className="font-bold text-3xl self-center">
+          {user ? `Welcome back, ${displayName}` : 'Login'}
+        </Heading>
+        
         <Divider className='my-[30px] w-[100%]'/>
-        <Input 
-          variant="rounded"
-          size="xl"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-        >
-          <InputField placeholder="Enter Email" value={email} onChangeText={setEmail} />
-        </Input>
+        {!user && (
+          <Input 
+            variant="rounded"
+            size="xl"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+          >
+            <InputField
+              placeholder="Enter Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+            />
+          </Input>
+        )}
         <Input 
           variant="rounded"
           size="xl"
@@ -98,12 +109,16 @@ export default function Tab1() {
             variant='solid'
             onPress={handleSignIn}
           >
-            <ButtonText>Sign In</ButtonText>
+            <ButtonText> Sign In </ButtonText>
           </Button>
         </Box>
-        
-       
-          
+        <Box className='flex-row justify-center w-full'>
+          <Text className='text-sm text-typography-700'>New here? </Text>
+          <Link onPress={() => router.push('/tabs/(tabs)/tab2')}>
+            <LinkText className='text-sm text-primary-500'>Sign Up</LinkText>
+          </Link>
+        </Box>
+
       </VStack>
     </Center>
   );
