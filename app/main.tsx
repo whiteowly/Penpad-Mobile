@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import {Button, ButtonText, ButtonIcon} from '@/components/ui/button'; 
 import { Divider } from '@/components/ui/divider';
 import { MenuItem } from '@/components/ui/menu';
-import { Sidebar } from 'lucide-react-native';
+import Sidebar from './sidebar';
 
 const Main = () => {
   const colorScheme = useColorScheme();
@@ -21,13 +21,12 @@ const Main = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
-      
-      <Sidebar />
+  <Sidebar />
         <Heading className="text-3xl font-bold mb-2 text-typography-900">
            
         </Heading>
-        <Divider className='my-[10px] w-[100%]'/>
-         <Fab
+        <Divider className='my-[10px] w-[100%]' />
+        <Fab
               placement='bottom right'
               size="lg"
               className="m-6"
@@ -43,3 +42,4 @@ const Main = () => {
 };
 
 export default Main;
+  

@@ -26,7 +26,6 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const [styleLoaded, setStyleLoaded] = useState(false);
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
@@ -47,7 +46,16 @@ function RootLayoutNav() {
     <GluestackUIProvider mode={colorMode}>
       <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
         <Slot />
-       
+        <Fab
+          placement="top right"
+          className="top-6 right-6"
+          size="lg"
+          onPress={() =>
+            setColorMode(colorMode === 'dark' ? 'light' : 'dark')
+          }
+        >
+          <FabIcon as={colorMode === 'dark' ? SunIcon : MoonIcon} />
+        </Fab>
       </ThemeProvider>
     </GluestackUIProvider>
   );

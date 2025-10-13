@@ -17,33 +17,46 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
-import { User, Home, ShoppingCart, Wallet, LogOut, MenuIcon } from 'lucide-react-native';
-import React from 'react';
-import {Fab, FabIcon} from '@/components/ui/fab';
-import { useColorScheme} from 'react-native';
-import {Colors} from '@/constants/Colors';
+import {
+  User,
+  Home,
+  ShoppingCart,
+  Wallet,
+  LogOut,
+  MenuIcon,
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Fab, FabIcon } from '@/components/ui/fab';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
+import { app } from '../firebaseConfig';
 
 function Sidebar() {
-  const [showDrawer, setShowDrawer] = React.useState(true);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const auth = getAuth(app);
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return unsubscribe;
+  }, [auth]);
+
+  const displayName = user?.displayName ?? user?.email ?? 'Guest';
+
   return (
     <>
-      
       <Fab
-              placement='top left'
-              size="lg"
-              className="top-6 left-6"
-              onPress={() => {
-               setShowDrawer(true);
-              }}>
-                <FabIcon as={MenuIcon} />
-            </Fab>
-      <Drawer
-        isOpen={showDrawer}
-        onClose={() => {
-          setShowDrawer(false);
-        }}
+        placement="top right"
+        size="lg"
+        className="top-6 right-6"
+        onPress={() => setShowDrawer(true)}
       >
+        <FabIcon as={MenuIcon} />
+      </Fab>
+      <Drawer isOpen={showDrawer} onClose={() => setShowDrawer(false)}>
         <DrawerBackdrop />
         <DrawerContent className="w-[270px] md:w-[300px]">
           <DrawerHeader className="justify-center flex-col gap-2">
@@ -51,15 +64,19 @@ function Sidebar() {
               <AvatarFallbackText>User Image</AvatarFallbackText>
               <AvatarImage
                 source={{
-                  uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80',
+                  uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=687&q=80',
                 }}
               />
             </Avatar>
             <VStack className="justify-center items-center">
-              <Text size="lg">User Name</Text>
-              <Text size="sm" className="text-typography-600">
-                abc@gmail.com
+              <Text className="font-bold" size="lg">
+                {displayName}
               </Text>
+              {user?.email ? (
+                <Text size="sm" className="text-typography-600">
+                  {user.email}
+                </Text>
+              ) : null}
             </VStack>
           </DrawerHeader>
           <Divider className="my-4" />
@@ -73,11 +90,7 @@ function Sidebar() {
               <Text>Saved Address</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
-              <Icon
-                as={ShoppingCart}
-                size="lg"
-                className="text-typography-600"
-              />
+              <Icon as={ShoppingCart} size="lg" className="text-typography-600" />
               <Text>Orders</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
@@ -86,12 +99,7 @@ function Sidebar() {
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
-          
-            <Button
-              className="w-full gap-2"
-              variant="outline"
-              action="secondary"
-            >
+            <Button className="w-full gap-2" variant="outline" action="secondary">
               <ButtonText>Logout</ButtonText>
               <ButtonIcon as={LogOut} />
             </Button>
