@@ -10,8 +10,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Slot } from 'expo-router';
-import { Fab, FabIcon } from '@/components/ui/fab';
-import { MoonIcon, SunIcon } from '@/components/ui/icon';
+import { registerThemeHandlers, unregisterThemeHandlers } from '../lib/themeManager';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -43,11 +42,20 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
 
+  useEffect(() => {
+    registerThemeHandlers(
+      () =>
+        setColorMode((prev) => (prev === 'dark' ? 'light' : 'dark')),
+      () => colorMode
+    );
+
+    return unregisterThemeHandlers;
+  }, [colorMode]);
+
   return (
     <GluestackUIProvider mode={colorMode}>
       <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
         <Slot />
-       
       </ThemeProvider>
     </GluestackUIProvider>
   );

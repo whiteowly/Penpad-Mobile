@@ -5,13 +5,12 @@ import { Text } from '@/components/ui/text';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Fab, FabIcon, FabLabel } from '@/components/ui/fab';
-import { AddIcon, MenuIcon } from '@/components/ui/icon';
+import { Fab, FabIcon } from '@/components/ui/fab';
+import { AddIcon } from '@/components/ui/icon';
 import { useRouter } from 'expo-router';
-import {Button, ButtonText, ButtonIcon} from '@/components/ui/button'; 
+import Sidebar from './sidebar';
 import { Divider } from '@/components/ui/divider';
-import { MenuItem } from '@/components/ui/menu';
-import { Sidebar } from 'lucide-react-native';
+import { Center } from '@/components/ui/center';
 
 const Main = () => {
   const colorScheme = useColorScheme();
@@ -21,12 +20,16 @@ const Main = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
-      
-      <Sidebar />
-        <Heading className="text-3xl font-bold mb-2 text-typography-900">
-           
-        </Heading>
-        <Divider className='my-[10px] w-[100%]'/>
+          <Box className="flex-row items-center justify-between mb-4">
+            <Box className="items-start w-[56px]">
+              <Sidebar />
+            </Box>
+            <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
+              Tasks
+            </Heading>
+            <Box className="w-[56px]" />
+          </Box>
+          <Divider className="my-[1px] w-full" />
          <Fab
               placement='bottom right'
               size="lg"
@@ -36,6 +39,7 @@ const Main = () => {
               }}>
                 <FabIcon as={AddIcon} />
             </Fab>
+           
       </Box>
       
     </SafeAreaView>
