@@ -49,7 +49,7 @@ function Sidebar() {
       
       <Fab
         placement="top left"
-        size="md"
+        size="xl"
         className="relative top-0 left-0 z-10"
         onPress={() => setShowDrawer(true)}
       >
@@ -120,14 +120,7 @@ function Sidebar() {
           </DrawerBody>
           <DrawerFooter>
             
-            <Button
-              className="w-full gap-2"
-              variant="outline"
-              action="secondary"
-            >
-              <ButtonText>Logout</ButtonText>
-              <ButtonIcon as={LogOut} />
-            </Button>
+            
           </DrawerFooter>
         </DrawerContent>
       </Drawer>

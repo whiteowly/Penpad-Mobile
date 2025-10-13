@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Sidebar from './sidebar';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import {
+  EmailAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  updatePassword,
+} from 'firebase/auth';
 
 import { Box } from '@/components/ui/box';
 import { Heading } from '@/components/ui/heading';
@@ -22,29 +28,43 @@ import { useRouter } from 'expo-router';
 import { Pressable } from '@/components/ui/pressable';
 import { LockIcon, LogOutIcon } from 'lucide-react-native';
 import { Footer } from '@expo/html-elements';
+import { ArrowLeftIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icon';
+import {Input, InputField, InputIcon, InputSlot} from '@/components/ui/input';
+
 
 import {
   Modal,
   ModalBackdrop,
   ModalContent,
   ModalHeader,
-  ModalCloseButton,
   ModalBody,
   ModalFooter,
 } from '@/components/ui/modal';
 
 
+ 
 
 const Profile = () => {
+ 
   const colorScheme = useColorScheme();
   const backgroundColor = Colors[colorScheme ?? 'light'].background;
   const auth = getAuth(app);
   const router = useRouter();
 
+  const [showModal4, setShowModal4] = React.useState(false);
+  const [showModal2, setShowModal2] = React.useState(false);
+
   const [user, setUser] = useState(auth.currentUser);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
 
   const currentUser = auth.currentUser;
   const joinDate = currentUser?.metadata?.creationTime;
+
+  
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -57,6 +77,57 @@ const Profile = () => {
   const displayName = user?.displayName ?? user?.email ?? 'User';
   const resolvedAvatar = user?.photoURL ?? null;
   const [showModal, setShowModal] = React.useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+
+  const handleState = () => {
+    setShowPassword((showState) => {
+      return !showState;
+    });
+  };
+
+  const handlePasswordChange = async () => {
+    if (!user || !user.email) {
+      alert('You must be signed in to change your password.');
+      return;
+    }
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      alert('Please enter your current password and the new password twice.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      alert('The new passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      alert('New password must be at least 6 characters long.');
+      return;
+    }
+
+    try {
+      setIsUpdatingPassword(true);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+      
+
+      setShowModal4(false);
+      setShowModal2(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      alert('Password updated successfully.');
+    } catch (error) {
+      console.error('Failed to update password', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Password update failed. ${message}`);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
@@ -100,10 +171,156 @@ const Profile = () => {
             <Divider className="my-[10px] w-[100%]" />
               <Pressable 
             className="gap-3 flex-row items-center p-2 rounded-md"
-            onPress={() => {router.push('/profile'); ;}}>
+            onPress={() => {
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setShowModal4(true);
+            }}>
               <Icon as={LockIcon} size="lg" className="text-typography-600" />
               <Text size="lg">Change Password</Text>
             </Pressable>
+            
+
+        <Modal
+        isOpen={showModal4}
+        onClose={() => {
+          setShowModal4(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        }}
+      >
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader className="flex-col items-start gap-0.5">
+            <Heading>Enter Current password</Heading>
+            <Text size="sm">Incase you're an imposter</Text>
+          </ModalHeader>
+          <ModalBody className="mb-4">
+            <Input>
+              <InputField
+                placeholder="Current password"
+                secureTextEntry={!showPassword}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+              <InputSlot className="pr-3" onPress={handleState}>
+                <InputIcon
+                  as={showPassword ? EyeIcon : EyeOffIcon}
+                  color={Colors[colorScheme ?? 'light'].text}
+                />
+            </InputSlot>
+            </Input>
+          </ModalBody>
+          <ModalFooter className="flex-col items-start">
+            <Button
+              onPress={() => {
+                setShowModal4(false);
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setShowModal2(true);
+              }}
+              className="w-full"
+              isDisabled={!currentPassword || isUpdatingPassword}
+            >
+              <ButtonText>Trust me Bro</ButtonText>
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              onPress={() => {
+                setShowModal4(false);
+              }}
+              className="gap-1"
+            >
+              <ButtonIcon as={ArrowLeftIcon} />
+              <ButtonText>So ummmm</ButtonText>
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={showModal2}
+        onClose={() => {
+          setShowModal2(false);
+          setNewPassword('');
+          setConfirmNewPassword('');
+        }}
+      >
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader className="flex-col items-start gap-0.5">
+            <Heading>Enter your new password</Heading>
+            
+          </ModalHeader>
+          <ModalBody className="mb-4">
+            <VStack space="3">
+              <Input>
+                <InputField
+                  placeholder="New password"
+                  
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <InputSlot className="pr-3" onPress={handleState}>
+                <InputIcon
+            as={showPassword ? EyeIcon : EyeOffIcon}
+            color={Colors[colorScheme ?? 'light'].text}/>
+            </InputSlot>
+              </Input>
+              <Text size='sm'></Text>
+              <Input>
+                <InputField
+                  placeholder="Confirm new password"
+                 
+                  value={confirmNewPassword}
+                  onChangeText={setConfirmNewPassword}
+                   secureTextEntry={!showPassword}
+                />
+                <InputSlot className="pr-3" onPress={handleState}>
+                <InputIcon
+            as={showPassword ? EyeIcon : EyeOffIcon}  
+            color={Colors[colorScheme ?? 'light'].text}/>
+               </InputSlot>
+              </Input>
+            </VStack>
+          </ModalBody>
+          <ModalFooter className="flex-col items-start gap-3">
+            <Button
+              onPress={handlePasswordChange}
+              className="w-full"
+              isDisabled={isUpdatingPassword}
+            >
+              <ButtonText>
+                {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+              </ButtonText>
+            </Button>
+
+            <Button
+              variant="link"
+              size="sm"
+              onPress={() => {
+                setShowModal2(false);
+                setNewPassword('');
+                setConfirmNewPassword('');
+                setShowModal4(false);
+              }}
+              className="gap-1"
+              isDisabled={isUpdatingPassword}
+            >
+              <ButtonIcon as={ArrowLeftIcon} />
+              <ButtonText>I change my mind</ButtonText>
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+
+
+
+
             <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
             onPress={() => {router.push('/tasks'); }}>
               <Icon as={RepeatIcon} size="lg" className="text-typography-600" />
@@ -155,7 +372,7 @@ const Profile = () => {
         <ModalBackdrop />
         <ModalContent>
           <ModalHeader>     
-            <Heading size="lg">Modal Title</Heading>
+            <Heading size="lg">Log Out</Heading>
             
           </ModalHeader>
           <ModalBody>
@@ -170,14 +387,14 @@ const Profile = () => {
                 setShowModal(false);
               }}
             >
-              <ButtonText>Nah</ButtonText>
+              <ButtonText>Yuh</ButtonText>
             </Button>
             <Button
               onPress={() => {
                 setShowModal(false);
               }}
             >
-              <ButtonText>Yuh</ButtonText>
+              <ButtonText>Nuh</ButtonText>
             </Button>
           </ModalFooter>
         </ModalContent>
