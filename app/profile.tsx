@@ -30,6 +30,8 @@ import { LockIcon, LogOutIcon } from 'lucide-react-native';
 import { Footer } from '@expo/html-elements';
 import { ArrowLeftIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icon';
 import {Input, InputField, InputIcon, InputSlot} from '@/components/ui/input';
+import { signOut } from 'firebase/auth';
+import firebase from 'firebase/compat/app';
 
 
 import {
@@ -64,7 +66,15 @@ const Profile = () => {
   const currentUser = auth.currentUser;
   const joinDate = currentUser?.metadata?.creationTime;
 
-  
+  firebase.auth().signOut()
+  .then(() => {
+    // Sign-out successful
+    console.log('User signed out!');
+  })
+  .catch((error) => {
+    // An error happened
+    console.error('Sign Out Error', error);
+  });   
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -134,7 +144,7 @@ const Profile = () => {
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
         <Box className="flex-row items-center justify-between mb-4">
           <Box className="items-start w-[56px]">
-            <Sidebar />
+           
           </Box>
           <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
             Profile
@@ -158,11 +168,10 @@ const Profile = () => {
                 {user?.email}
               </Text>
             </VStack>
-         
-            </Box>
-            <Box>
-          <VStack>
-            <Text></Text>
+          </Box>
+          <Box>
+            <VStack>
+              <Text></Text>
             <Text size="2xl" 
               
                className="text-center mt-4 mb-2 font-bold text-typography-600">
