@@ -179,7 +179,11 @@ const Profile = () => {
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
         <Box className="flex-row items-center justify-between mb-4">
           <Box className="items-start w-[56px]">
-           
+           <Button
+            variant='link'
+            onPress={() => {router.back(); }}>
+            <ButtonIcon as={ArrowLeftIcon} />
+           </Button>
           </Box>
           <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
             Profile
