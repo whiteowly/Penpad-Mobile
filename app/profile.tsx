@@ -31,7 +31,6 @@ import { Footer } from '@expo/html-elements';
 import { ArrowLeftIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icon';
 import {Input, InputField, InputIcon, InputSlot} from '@/components/ui/input';
 import { signOut } from 'firebase/auth';
-import firebase from 'firebase/compat/app';
 
 
 import {
@@ -42,6 +41,7 @@ import {
   ModalBody,
   ModalFooter,
 } from '@/components/ui/modal';
+import { HStack } from '@/components/ui/hstack';
 
 
  
@@ -61,20 +61,22 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
   
 
   const currentUser = auth.currentUser;
   const joinDate = currentUser?.metadata?.creationTime;
 
-  firebase.auth().signOut()
-  .then(() => {
-    // Sign-out successful
-    console.log('User signed out!');
-  })
-  .catch((error) => {
-    // An error happened
-    console.error('Sign Out Error', error);
-  });   
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace('/tabs/tab1');
+    } catch (error) {
+      console.error('Sign Out Error', error);
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -88,12 +90,17 @@ const Profile = () => {
   const resolvedAvatar = user?.photoURL ?? null;
   const [showModal, setShowModal] = React.useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showModal3, setShowModal3] = React.useState(false);
   
 
   const handleState = () => {
     setShowPassword((showState) => {
       return !showState;
     });
+  };
+
+  const handleDeletePasswordToggle = () => {
+    setShowDeletePassword((prev) => !prev);
   };
 
   const handlePasswordChange = async () => {
@@ -136,6 +143,34 @@ const Profile = () => {
       alert(`Password update failed. ${message}`);
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || !user.email) {
+      alert('You must be signed in to delete your account.');
+      return;
+    }
+    if (!deletePassword) {
+      alert('Please enter your password to confirm deletion.');
+      return;
+    }
+
+    try {
+      setIsDeletingAccount(true);
+      const credential = EmailAuthProvider.credential(user.email, deletePassword);
+      await reauthenticateWithCredential(user, credential);
+      await user.delete();
+      setShowModal3(false);
+      setDeletePassword('');
+  setShowDeletePassword(false);
+      router.replace('/tabs/tab1');
+    } catch (error) {
+      console.error('Delete Account Error', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Account deletion failed. ${message}`);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -296,7 +331,7 @@ const Profile = () => {
               </Input>
             </VStack>
           </ModalBody>
-          <ModalFooter className="flex-col items-start gap-3">
+          <ModalFooter className="flex-col items-start ">
             <Button
               onPress={handlePasswordChange}
               className="w-full"
@@ -326,24 +361,88 @@ const Profile = () => {
         </ModalContent>
       </Modal>
 
-
-
-
-
             <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
             onPress={() => {router.push('/tasks'); }}>
               <Icon as={RepeatIcon} size="lg" className="text-typography-600" />
               <Text size="lg">Update Email Address</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
-             onPress={() => {router.push('/profile'); }}>
+             onPress={() => {
+              setDeletePassword('');
+              setShowDeletePassword(false);
+              setShowModal3(true);
+            }}>
               <Icon
                 as={SlashIcon}
                 size="lg"
                 className="text-typography-600"
+                
               />
               <Text size="lg">Delete Account</Text>
             </Pressable>
+             <Modal 
+          isOpen={showModal3}
+          onClose={() => {
+          setShowModal3(false);
+          setDeletePassword('');
+          setIsDeletingAccount(false);
+          setShowDeletePassword(false);
+        }}
+        size="md"
+      >
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader>     
+            <Heading size="lg">Delete Account?</Heading>
+            
+          </ModalHeader>
+          <ModalBody>
+            <Text className="mb-4">Enter your password to confirm.</Text>
+            <Input>
+              <InputField
+                placeholder="Current password"
+                secureTextEntry={!showDeletePassword}
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+              />
+              <InputSlot className="pr-3" onPress={handleDeletePasswordToggle}>
+                <InputIcon
+                  as={showDeletePassword ? EyeIcon : EyeOffIcon}
+                  color={Colors[colorScheme ?? 'light'].text}
+                />
+              </InputSlot>
+            </Input>
+          </ModalBody>
+          <ModalFooter className= 'flex-col items-start'>
+            <HStack space='4xl'>
+                <Button
+              variant="link"
+              size="sm"
+              onPress={() => {
+                setShowModal2(false);
+                setDeletePassword('');
+                setShowModal3(false);
+              }}
+              className="gap-1"
+              isDisabled={isDeletingAccount}
+            >
+              <ButtonIcon as={ArrowLeftIcon} />
+              <ButtonText>I change my mind</ButtonText>
+            </Button>
+            <Button
+              
+              onPress={handleDeleteAccount}
+              isDisabled={isDeletingAccount}
+            >
+              <ButtonText>{isDeletingAccount ? 'Deleting...' : 'Delete'}</ButtonText>
+            </Button>
+          
+            </HStack>
+            
+            
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
           </VStack>
         </Box>
         <Box>
@@ -393,7 +492,7 @@ const Profile = () => {
               action="secondary"
               className="mr-3"
               onPress={() => {
-                setShowModal(false);
+                handleLogout();
               }}
             >
               <ButtonText>Yuh</ButtonText>
