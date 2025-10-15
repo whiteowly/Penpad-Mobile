@@ -92,7 +92,7 @@ const Profile = () => {
   const [showModal, setShowModal] = React.useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showModal3, setShowModal3] = React.useState(false);
-  const { remainingCount } = useUserTodos();
+  const { remainingCount, completedCount, totalCount } = useUserTodos();
   
 
   const handleState = () => {
@@ -460,7 +460,8 @@ const Profile = () => {
             </Text>
             <Divider className="my-[10px] w-[100%]" />
             <Text size="lg">Join Date: {joinDate} </Text>
-            <Text size="lg">Total Tasks Created: </Text>
+            <Text size="lg">Total Tasks Created: {totalCount}</Text>
+            <Text size="lg">Completed Tasks: {completedCount}</Text>
             <Text size="lg">Active Tasks: {remainingCount}</Text>
         </Box>
         <Footer

@@ -35,6 +35,8 @@ import {
   doc,
   serverTimestamp,
   deleteDoc,
+  setDoc,
+  increment,
 } from 'firebase/firestore';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
@@ -76,6 +78,18 @@ const Main = () => {
         completed: false,
         createdAt: serverTimestamp(),
       });
+      try {
+        const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
+        await setDoc(
+          statsRef,
+          {
+            totalCreated: increment(1),
+          },
+          { merge: true }
+        );
+      } catch (statsError) {
+        console.error('Failed to update created-task count', statsError);
+      }
       setInputValue('');
       setShowModal(false);
     } catch (error) {
@@ -95,10 +109,27 @@ const Main = () => {
 
     try {
       const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      const willComplete = !todo.completed;
+
       await updateDoc(todoRef, {
-        completed: !todo.completed,
+        completed: willComplete,
         updatedAt: serverTimestamp(),
       });
+
+      if (willComplete) {
+        try {
+          const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
+          await setDoc(
+            statsRef,
+            {
+              totalCompleted: increment(1),
+            },
+            { merge: true }
+          );
+        } catch (statsError) {
+          console.error('Failed to update completed-task count', statsError);
+        }
+      }
     } catch (error) {
       console.error('Failed to update task', error);
       const message = error instanceof Error ? error.message : 'Unknown error';

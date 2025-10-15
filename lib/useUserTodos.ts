@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { app, auth } from '../firebaseConfig';
 import {
   collection,
+  doc,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -24,13 +25,17 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     auth.currentUser?.uid ?? null
   );
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [summaryCounts, setSummaryCounts] = useState({
+    totalCreated: 0,
+    totalCompleted: 0,
+  });
 
   const db = useMemo(() => getFirestore(app), []);
   const onError = options?.onError;
 
   const handleError = useCallback(
     (error: unknown) => {
-      console.error('Failed to load tasks', error);
+      console.error('Failed to load todo data', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       onError?.(error, message);
     },
@@ -48,6 +53,7 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
   useEffect(() => {
     if (!activeUserId) {
       setTodos([]);
+      setSummaryCounts({ totalCreated: 0, totalCompleted: 0 });
       return;
     }
 
@@ -72,15 +78,49 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     return unsubscribe;
   }, [db, activeUserId, handleError]);
 
+  useEffect(() => {
+    if (!activeUserId) {
+      setSummaryCounts({ totalCreated: 0, totalCompleted: 0 });
+      return;
+    }
+
+    const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
+
+    const unsubscribe = onSnapshot(
+      statsRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setSummaryCounts({ totalCreated: 0, totalCompleted: 0 });
+          return;
+        }
+
+        const data = snapshot.data();
+        setSummaryCounts({
+          totalCreated:
+            typeof data.totalCreated === 'number' ? data.totalCreated : 0,
+          totalCompleted:
+            typeof data.totalCompleted === 'number' ? data.totalCompleted : 0,
+        });
+      },
+      handleError
+    );
+
+    return unsubscribe;
+  }, [db, activeUserId, handleError]);
+
   const remainingCount = useMemo(
     () => todos.filter((todo) => !todo.completed).length,
     [todos]
   );
+  const totalCount = summaryCounts.totalCreated;
+  const completedCount = summaryCounts.totalCompleted;
 
   return {
     db,
     todos,
     remainingCount,
+    totalCount,
+    completedCount,
     activeUserId,
     isAuthenticated: Boolean(activeUserId),
   };
