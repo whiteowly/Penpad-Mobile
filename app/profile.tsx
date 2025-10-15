@@ -31,6 +31,7 @@ import { Footer } from '@expo/html-elements';
 import { ArrowLeftIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icon';
 import {Input, InputField, InputIcon, InputSlot} from '@/components/ui/input';
 import { signOut } from 'firebase/auth';
+import { useUserTodos } from '@/lib/useUserTodos';
 
 
 import {
@@ -91,6 +92,7 @@ const Profile = () => {
   const [showModal, setShowModal] = React.useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showModal3, setShowModal3] = React.useState(false);
+  const { remainingCount } = useUserTodos();
   
 
   const handleState = () => {
@@ -459,7 +461,7 @@ const Profile = () => {
             <Divider className="my-[10px] w-[100%]" />
             <Text size="lg">Join Date: {joinDate} </Text>
             <Text size="lg">Total Tasks Created: </Text>
-            <Text size="lg">Active Tasks: </Text>
+            <Text size="lg">Active Tasks: {remainingCount}</Text>
         </Box>
         <Footer
           style={{ width: '100%' }}

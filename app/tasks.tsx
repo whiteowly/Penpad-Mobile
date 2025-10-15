@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Box } from '@/components/ui/box';
 import { Heading } from '@/components/ui/heading';
@@ -28,27 +28,16 @@ import {
 } from '@/components/ui/checkbox';
 import { VStack } from '@/components/ui/vstack';
 import { Pressable } from '@/components/ui/pressable';
-import { app, auth } from '../firebaseConfig';
 import {
   collection,
   addDoc,
   updateDoc,
   doc,
-  getFirestore,
-  onSnapshot,
-  query,
-  orderBy,
   serverTimestamp,
   deleteDoc,
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 import { HStack } from '@/components/ui/hstack';
-
-type TodoItem = {
-  id: string;
-  text: string;
-  completed: boolean;
-};
+import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
 const Main = () => {
   const colorScheme = useColorScheme();
@@ -56,55 +45,19 @@ const Main = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeUserId, setActiveUserId] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const db = useMemo(() => getFirestore(app), []);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setActiveUserId(currentUser?.uid ?? null);
-    });
-
-    return unsubscribe;
+  const handleLoadError = useCallback((_error: unknown, message: string) => {
+    alert(`Could not load tasks. ${message}`);
   }, []);
 
-  useEffect(() => {
-    if (!activeUserId) {
-      setTodos([]);
-      return;
-    }
+  const todoHookOptions = useMemo(
+    () => ({ onError: handleLoadError }),
+    [handleLoadError]
+  );
 
-    const todosQuery = query(
-      collection(db, 'users', activeUserId, 'todos'),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(
-      todosQuery,
-      (snapshot) => {
-        const nextTodos: TodoItem[] = snapshot.docs.map((document) => {
-          const data = document.data();
-          return {
-            id: document.id,
-            text: typeof data.text === 'string' ? data.text : '',
-            completed: Boolean(data.completed),
-          };
-        });
-
-        setTodos(nextTodos);
-      },
-      (error) => {
-        console.error('Failed to load tasks', error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        alert(`Could not load tasks. ${message}`);
-      }
-    );
-
-    return unsubscribe;
-  }, [db, activeUserId]);
+  const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
 
   const handleAddTodo = async () => {
     const trimmedValue = inputValue.trim();
@@ -171,13 +124,6 @@ const Main = () => {
     }
   };
 
-  const remainingCount = useMemo(
-    () => todos.filter((todo) => !todo.completed).length,
-    [todos]
-  );
-
-  const isAuthenticated = Boolean(activeUserId);
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
@@ -194,7 +140,7 @@ const Main = () => {
 
         <Box className="mt-6">
           <Heading size="md" className="text-typography-700">
-            {todos.length ? `${remainingCount} tasks remaining` : 'No tasks yet'}
+            {todos.length ? 'Current Tasks' : 'No tasks yet'}
           </Heading>
           {!isAuthenticated && (
             <Text className="mt-2 text-typography-500">
