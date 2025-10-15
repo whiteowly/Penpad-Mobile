@@ -44,6 +44,7 @@ const Main = () => {
   const backgroundColor = Colors[colorScheme ?? 'light'].background;
 
   const [showModal, setShowModal] = useState(false);
+  const [showModal1, setShowModal1] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -164,29 +165,66 @@ const Main = () => {
                       <CheckboxIcon as={CheckIcon} />
                     </CheckboxIndicator>
                     <CheckboxLabel
-                      className={`ml-3 text-base ${
-                        todo.completed
-                          ? 'line-through text-typography-400'
-                          : 'text-typography-900'
-                      }`}
+                      className={`ml-3 text-base ${todo.completed
+                        ? 'line-through text-typography-400'
+                        : 'text-typography-900'
+                        }`}
                     >
                       {todo.text}
                     </CheckboxLabel>
                   </Checkbox>
                   <Pressable
                     className="ml-3 rounded-full p-2"
-                    onPress={() => handleDeleteTodo(todo)}
+                    onPress={() => setShowModal1(true)}
                     isDisabled={deletingId === todo.id}
                     accessibilityLabel="Delete task"
                   >
                     <Icon
                       as={TrashIcon}
                       size="lg"
-                      className={`text-error-600 ${
-                        deletingId === todo.id ? 'opacity-40' : 'opacity-90'
-                      }`}
+                      className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'
+                        }`}
                     />
                   </Pressable>
+                  <Modal
+                    isOpen={showModal1}
+                    onClose={() => {
+                      setShowModal(false);
+                    }}
+                    size="md"
+                  >
+                    <ModalBackdrop />
+                    <ModalContent>
+                      <ModalHeader>
+                        <Heading size="lg">Delete Task</Heading>
+
+                      </ModalHeader>
+                      <ModalBody>
+                        <Text>You sure?</Text>
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button
+                          variant="outline"
+                          action="secondary"
+                          className="mr-3"
+                          onPress={() => {
+                            setShowModal1(false);
+                          }}
+
+                        >
+                          <ButtonText>Nuh</ButtonText>
+                        </Button>
+                        <Button
+                          onPress={() => {
+                            handleDeleteTodo(todo);
+                            setShowModal1(false);
+                          }}
+                        >
+                          <ButtonText>Yuh</ButtonText>
+                        </Button>
+                      </ModalFooter>
+                    </ModalContent>
+                  </Modal>
                 </HStack>
               ))
             ) : (
