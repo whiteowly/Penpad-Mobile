@@ -15,10 +15,27 @@ import {
 } from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from 'react-native';
+import {
+  FormControl,
+  FormControlLabel,
+  FormControlError,
+  FormControlErrorText,
+  FormControlErrorIcon,
+  FormControlHelper,
+  FormControlHelperText,
+  FormControlLabelText,
+} from '@/components/ui/form-control';
+import { AlertCircleIcon } from '@/components/ui/icon';
+import React from 'react';
+
+const isValidEmail = (value: string) => {
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailPattern.test(value.trim());
+};
 
 export default function Tab2() {
   const auth = getAuth(app);
@@ -29,16 +46,37 @@ export default function Tab2() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [isInvalid, setIsInvalid] = React.useState(false);
+  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
 
   const handlestate = () => {
      setShowPassword((showState) => {
       return !showState;
      });
   };
-   
+
   const handleSignUp = async () => {
+    setStatusMessage(null);
+    setStatusVariant(null);
+
+    if (password.length < 6) {
+      setIsInvalid(true);
+      setStatusVariant('error');
+      setStatusMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsInvalid(false);
+
+    if (!isValidEmail(email)) {
+      setStatusVariant('error');
+      setStatusMessage('Please enter a valid email address.');
+      return;
+    }
     if (password !== confirmPassword) {
-      alert("Passwords don't match");
+      setStatusVariant('error');
+      setStatusMessage("Passwords don't match.");
       return;
     }
     try {
@@ -51,12 +89,35 @@ export default function Tab2() {
       await updateProfile(user, {
         displayName: username,
       });
-  router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
+      setStatusVariant('success');
+      setStatusMessage('Account created successfully. Redirecting...');
+      router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
     } catch (error) {
       console.error('Sign up error:', error);
-      alert('Failed to create account. ' + (error as Error).message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setStatusVariant('error');
+      setStatusMessage(`Failed to create account. ${message}`);
     }
   };
+
+  const resetForm = React.useCallback(() => {
+    setEmail('');
+    setUsername('');
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setIsInvalid(false);
+    setStatusMessage(null);
+    setStatusVariant(null);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        resetForm();
+      };
+    }, [resetForm])
+  );
 
   return (
     <Center className="flex-1">
@@ -65,6 +126,14 @@ export default function Tab2() {
       
       {/* <EditScreenInfo path="app/(app)/(tabs)/tab2.tsx" /> */}
     <VStack space="md" className="w-[80%]">
+    <FormControl
+        isInvalid={isInvalid}
+        size="lg"
+        isDisabled={false}
+        isReadOnly={false}
+        isRequired={false}
+      >
+      
         <Input 
           variant="rounded"
           size= "xl"
@@ -92,7 +161,8 @@ export default function Tab2() {
             onChangeText={setUsername}
             autoCapitalize="none"
           />
-        </Input><Input 
+        </Input>
+        <Input 
           variant="rounded"
           size= "xl"
           isDisabled={false}
@@ -110,7 +180,21 @@ export default function Tab2() {
             as={showPassword ? EyeIcon : EyeOffIcon}
             color={Colors[colorScheme ?? 'light'].text}/>
             </InputSlot>
-        </Input><Input 
+        </Input>
+        
+        {/* <FormControlHelper>
+          <FormControlHelperText>
+            Must be at least 6 characters.
+          </FormControlHelperText>
+        </FormControlHelper> */}
+        {/* <FormControlError>
+          <FormControlErrorIcon as={AlertCircleIcon} className="text-red-500" />
+          <FormControlErrorText className="text-red-500">
+            At least 6 characters are required.
+          </FormControlErrorText>
+        </FormControlError> */}
+
+        <Input 
           variant="rounded"
           size= "xl"
           isDisabled={false}
@@ -131,7 +215,16 @@ export default function Tab2() {
           
         </Input>
         
-        <Text></Text>
+        </FormControl>
+         {statusMessage && (
+            <Text
+              className={`mt-3 text-center text-sm ${
+                statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
+              }`}
+            >
+              {statusMessage}
+            </Text>
+          )}
         <Box className='items-center w-full rounded-x1'>
        <Button
             size="lg"
@@ -142,6 +235,7 @@ export default function Tab2() {
             <ButtonText>  Sign Up  </ButtonText>
           </Button>
           </Box>
+         
           <Box className='flex-row justify-center w-full'>
           <Text className='text-sm text-typography-700'>Already got an account?</Text>
           <Link onPress={() => router.push('/tabs/(tabs)/tab1')}>

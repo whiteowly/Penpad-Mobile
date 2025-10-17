@@ -26,6 +26,8 @@ export default function Tab1() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusVariant, setStatusVariant] = useState<'error' | 'success' | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -46,13 +48,20 @@ export default function Tab1() {
   };
 
   const handleSignIn = async () => {
+    setStatusMessage(null);
+    setStatusVariant(null);
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setPassword('');
+      setStatusVariant('success');
+      setStatusMessage('Signed in successfully. Redirecting...');
       router.replace('/tasks');
     } catch (error) {
       console.error(error);
-      alert('Login failed. ' + (error as Error).message);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setStatusVariant('error');
+      setStatusMessage(`Login failed. ${message}`);
     }
   };
 
@@ -103,6 +112,15 @@ export default function Tab1() {
         </Box>
         
         <Box className='items-center w-full rounded-xl'>
+          {statusMessage && (
+            <Text
+              className={`mb-3 text-center text-sm ${
+                statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
+              }`}
+            >
+              {statusMessage}
+            </Text>
+          )}
           <Button
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
