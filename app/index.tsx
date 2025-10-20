@@ -28,7 +28,7 @@ export default function Home() {
               source={iconImage}
               accessibilityLabel="PenPad logo"
             />
-              <Text className='font-bold font-poppins text-5xl'>PenPad</Text>
+              <Text className='font-bold text-5xl'>PenPad</Text>
             </VStack>
           </Box>
         </Box>
