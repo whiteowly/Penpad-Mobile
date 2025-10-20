@@ -287,8 +287,9 @@ const Main = () => {
               <Divider className="my-[5px] w-full" />
             </ModalHeader>
             <ModalBody className="mb-4 w-full">
-              <Input variant="rounded" size="xl">
+              <Input variant="outline" size="xl">
                 <InputField
+                  
                   placeholder="Add it here..."
                   value={inputValue}
                   onChangeText={setInputValue}
@@ -305,7 +306,7 @@ const Main = () => {
                 onPress={handleAddTodo}
                 isDisabled={isSaving}
               >
-                <ButtonText>{isSaving ? 'Adding...' : 'Add It'}</ButtonText>
+                <ButtonText>Add It</ButtonText>
               </Button>
               <Button
                 variant="link"

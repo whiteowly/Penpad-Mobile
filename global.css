@@ -3,5 +3,5 @@
 @tailwind utilities;
 
 html, body {
-	font-family: Poppins, sans-serif;
+	font-family: 'Poppins_400Regular', sans-serif;
 }

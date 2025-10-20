@@ -1,9 +1,11 @@
 import React from 'react';
-import Gradient from '@/assets/icons/Gradient';
 import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
-import { ImageBackground } from '@/components/ui/image-background';
+import { VStack } from '@/components/ui/vstack';  
+import { Image } from '@/components/ui/image';
+
+const iconImage = require('../assets/images/icon.jpg');
 
 export default function Home() {
   const router = useRouter();
@@ -17,24 +19,19 @@ export default function Home() {
   }, [router]);
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/background.jpg')}
-      resizeMode="cover"
-      className='flex-1'
-    >
-       <Box className="flex-1 bg-background-300 h-[100vh]">
-        <Box className="absolute h-[500px] w-[500px] lg:w-[700px] lg:h-[700px]">
-          
-        </Box>
-    
+    <Box className="flex-1 h-[100vh] bg-white">
         <Box className="flex flex-1 items-center mx-5 lg:my-24 lg:mx-32 py-safe">
           <Box className="flex-1 justify-center items-center h-[20px] w-[300px] lg:h-[160px] lg:w-[400px]">
-            <Text className='font-bold text-5xl'>PenPad</Text>
+            <VStack>
+              <Image
+              size="2xl"
+              source={iconImage}
+              accessibilityLabel="PenPad logo"
+            />
+              <Text className='font-bold font-poppins text-5xl'>PenPad</Text>
+            </VStack>
           </Box>
         </Box>
-      
     </Box>
-    </ImageBackground>
-    
   );
 }
