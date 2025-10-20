@@ -61,7 +61,7 @@ export default function Tab1() {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
-      setStatusMessage(`Login failed. ${message}`);
+      setStatusMessage(`Login failed.`);
     }
   };
 
@@ -70,7 +70,7 @@ export default function Tab1() {
     <Center className="flex-1">
       <VStack space="md" className="w-[80%]">
         <Heading className="font-bold text-3xl self-center">
-          {user ? `Welcome back, ${displayName}` : 'Login'}
+          {user ? `Heyy, ${displayName}` : 'Login'}
         </Heading>
         
         <Divider className='my-[30px] w-[100%]'/>
