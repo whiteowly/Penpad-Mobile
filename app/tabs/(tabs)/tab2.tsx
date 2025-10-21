@@ -49,14 +49,22 @@ export default function Tab2() {
   const [isInvalid, setIsInvalid] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
+  const isSignUpDisabled =
+    !email.trim() ||
+    !username.trim() ||
+    !password.trim() ||
+    !confirmPassword.trim();
 
   const handlestate = () => {
-     setShowPassword((showState) => {
+    setShowPassword((showState) => {
       return !showState;
-     });
+    });
   };
 
   const handleSignUp = async () => {
+    if (isSignUpDisabled) {
+      return;
+    }
     setStatusMessage(null);
     setStatusVariant(null);
 
@@ -91,7 +99,7 @@ export default function Tab2() {
       });
       setStatusVariant('success');
       setStatusMessage('Account created successfully. Redirecting...');
-      router.replace('/tabs/tab1'); // or '/main' if you want to auto-login
+      router.replace('/tasks'); // or '/main' if you want to auto-login
     } catch (error) {
       console.error('Sign up error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -121,130 +129,121 @@ export default function Tab2() {
 
   return (
     <Center className="flex-1">
-      <Heading className="font-bold text-2xl">Create Your Account</Heading>
-      <Divider className="my-[30px] w-[80%]" />
-      
-      {/* <EditScreenInfo path="app/(app)/(tabs)/tab2.tsx" /> */}
-    <VStack space="md" className="w-[80%]">
-    <FormControl
-        isInvalid={isInvalid}
-        size="lg"
-        isDisabled={false}
-        isReadOnly={false}
-        isRequired={false}
+      <Heading
+        className="text-2xl"
+        style={{ fontFamily: 'Poppins_600SemiBold' }}
       >
-      
-        <Input 
-          variant="rounded"
-          size= "xl"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-        >
-          <InputField
-            placeholder="E-mail"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-          />
-        </Input>
-        <Input 
-          variant="rounded"
-          size= "xl"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-        >
-          <InputField
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
-        </Input>
-        <Input 
-          variant="rounded"
-          size= "xl"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-        >
-          <InputField
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            type={showPassword ? 'text' : 'password'}/>
-            <InputSlot className="pr-3" onPress={handlestate}>
-                <InputIcon
-            as={showPassword ? EyeIcon : EyeOffIcon}
-            color={Colors[colorScheme ?? 'light'].text}/>
-            </InputSlot>
-        </Input>
-        
-        {/* <FormControlHelper>
-          <FormControlHelperText>
-            Must be at least 6 characters.
-          </FormControlHelperText>
-        </FormControlHelper> */}
-        {/* <FormControlError>
-          <FormControlErrorIcon as={AlertCircleIcon} className="text-red-500" />
-          <FormControlErrorText className="text-red-500">
-            At least 6 characters are required.
-          </FormControlErrorText>
-        </FormControlError> */}
+        Create Your Account
+      </Heading>
+      <Divider className="my-[30px] w-[80%]" />
 
-        <Input 
-          variant="rounded"
-          size= "xl"
+      <VStack space="md" className="w-[80%]">
+        <FormControl
+          isInvalid={isInvalid}
+          size="lg"
           isDisabled={false}
-          isInvalid={false}
           isReadOnly={false}
+          isRequired={false}
         >
-          <InputField
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={!showPassword}
-            type={showPassword ? 'text' : 'password'}/>
+          <VStack space="md">
+          <Input
+            variant="rounded"
+            size="xl"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+          >
+            <InputField
+              placeholder="E-mail"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+            />
+          </Input>
+          <Input
+            variant="rounded"
+            size="xl"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+          >
+            <InputField
+              placeholder="Username"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+          </Input>
+          <Input
+            variant="rounded"
+            size="xl"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+          >
+            <InputField
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              type={showPassword ? 'text' : 'password'} />
             <InputSlot className="pr-3" onPress={handlestate}>
-                <InputIcon
-            as={showPassword ? EyeIcon : EyeOffIcon}
-            color={Colors[colorScheme ?? 'light'].text}/>
+              <InputIcon
+                as={showPassword ? EyeIcon : EyeOffIcon}
+                color={Colors[colorScheme ?? 'light'].text} />
             </InputSlot>
-          
-        </Input>
-        
+          </Input>
+          <Input
+            variant="rounded"
+            size="xl"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+          >
+            <InputField
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+              type={showPassword ? 'text' : 'password'} />
+            <InputSlot className="pr-3" onPress={handlestate}>
+              <InputIcon
+                as={showPassword ? EyeIcon : EyeOffIcon}
+                color={Colors[colorScheme ?? 'light'].text} />
+            </InputSlot>
+
+          </Input>
+          </VStack>
         </FormControl>
-         {statusMessage && (
-            <Text
-              className={`mt-3 text-center text-sm ${
-                statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
+        {statusMessage && (
+          <Text
+            className={`mt-3 text-center text-sm ${statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
               }`}
-            >
-              {statusMessage}
-            </Text>
-          )}
+          >
+            {statusMessage}
+          </Text>
+        )}
         <Box className='items-center w-full rounded-x1'>
-       <Button
+          <Button
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
+            isDisabled={isSignUpDisabled}
             onPress={handleSignUp}
           >
             <ButtonText>  Sign Up  </ButtonText>
           </Button>
-          </Box>
-         
-          <Box className='flex-row justify-center w-full'>
+        </Box>
+
+        <Box className='flex-row justify-center w-full'>
           <Text className='text-sm text-typography-700'>Already got an account?</Text>
           <Link onPress={() => router.push('/tabs/(tabs)/tab1')}>
             <LinkText className='text-sm text-primary-500'> Login</LinkText>
           </Link>
         </Box>
-          
+
       </VStack>
-    
+
     </Center>
   );
 }

@@ -28,6 +28,7 @@ export default function Tab1() {
   const colorScheme = useColorScheme();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusVariant, setStatusVariant] = useState<'error' | 'success' | null>(null);
+  const isSignInDisabled = !email.trim() || !password.trim();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -48,6 +49,9 @@ export default function Tab1() {
   };
 
   const handleSignIn = async () => {
+    if (isSignInDisabled) {
+      return;
+    }
     setStatusMessage(null);
     setStatusVariant(null);
 
@@ -69,7 +73,10 @@ export default function Tab1() {
   return (
     <Center className="flex-1">
       <VStack space="md" className="w-[80%]">
-        <Heading className="font-bold text-3xl self-center">
+        <Heading
+          className="text-3xl self-center"
+          style={{ fontFamily: 'Poppins_600SemiBold' }}
+        >
           {user ? `Heyy, ${displayName}` : 'Login'}
         </Heading>
         
@@ -125,6 +132,7 @@ export default function Tab1() {
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
+            isDisabled={isSignInDisabled}
             onPress={handleSignIn}
           >
             <ButtonText> Sign In </ButtonText>
