@@ -43,7 +43,7 @@ import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
 const Main = () => {
   const colorScheme = useColorScheme();
-  const backgroundColor = Colors[colorScheme ?? 'light'].background;
+  const backgroundColor = Colors[colorScheme].background;
 
   const [showModal, setShowModal] = useState(false);
   const [showModal1, setShowModal1] = useState(false);
@@ -61,6 +61,10 @@ const Main = () => {
   );
 
   const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+
+  const sortedTodos = useMemo(() => {
+    return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
+  }, [todos]);
 
   const handleAddTodo = async () => {
     const trimmedValue = inputValue.trim();
@@ -163,17 +167,20 @@ const Main = () => {
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
-          <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
-            Tasks
-          </Heading>
+          <Text
+                  className="text-4xl text-bold"
+                  style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+                >
+                  Tasks
+                </Text>
           <Box className="w-[56px]" />
         </Box>
         <Divider className="my-[1px] w-full" />
 
         <Box className="mt-6">
-          <Heading size="md" className="text-typography-700">
+          <Text size="md" className="text-typography-700">
             {todos.length ? 'Current Tasks' : 'No tasks yet'}
-          </Heading>
+          </Text>
           {!isAuthenticated && (
             <Text className="mt-2 text-typography-500">
               Sign in to sync tasks across your devices.
@@ -181,7 +188,7 @@ const Main = () => {
           )}
           <VStack space="md" className="mt-4">
             {todos.length ? (
-              todos.map((todo) => (
+              sortedTodos.map((todo) => (
                 <HStack
                   key={todo.id}
                   className="flex-row items-center justify-between bg-background-50 rounded-xl border border-border-200 px-4 py-3"
@@ -226,12 +233,18 @@ const Main = () => {
                   >
                     <ModalBackdrop />
                     <ModalContent>
-                      <ModalHeader>
-                        <Heading size="lg">Delete Task</Heading>
+                      <ModalHeader className="flex-col items-center gap-0.5">
+              <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
+              size="xl"
+              >Delete Task</Text>
+               
+               
+              <Divider className="my-[5px] w-full" />
+            </ModalHeader>
 
-                      </ModalHeader>
                       <ModalBody>
-                        <Text>You sure?</Text>
+                        <Text 
+                        size='lg'>You sure?</Text>
                       </ModalBody>
                       <ModalFooter>
                         <Button
@@ -283,7 +296,11 @@ const Main = () => {
           <ModalBackdrop />
           <ModalContent>
             <ModalHeader className="flex-col items-center gap-0.5">
-              <Heading>Add New Task</Heading>
+              <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
+              size="xl"
+              >Add New Task</Text>
+               
+               
               <Divider className="my-[5px] w-full" />
             </ModalHeader>
             <ModalBody className="mb-4 w-full">

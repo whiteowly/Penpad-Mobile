@@ -35,7 +35,7 @@ import { CheckIcon } from '@/components/ui/icon';
 
 const Main = () => {
   const colorScheme = useColorScheme();
-  const backgroundColor = Colors[colorScheme ?? 'light'].background;
+  const backgroundColor = Colors[colorScheme].background;
   const router = useRouter();
   const [showModal, setShowModal] = React.useState(false);
   const [showModal2, setShowModal2] = React.useState(false);
@@ -49,12 +49,18 @@ const Main = () => {
             <Box className="items-start w-[56px]">
               <Sidebar />
             </Box>
-            <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
-              Upcoming
-            </Heading>
+           <Text
+                   className="text-4xl text-bold"
+                   style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+                 >
+                 Upcoming
+                 </Text>
             <Box className="w-[56px]" />
           </Box>
           <Divider className="my-[1px] w-full" />
+          <Box className="flex-1 items-center justify-center">
+            <Text>Coming soon, stay tuned!</Text>
+          </Box>
          <Fab
               placement='bottom right'
               size="xl"
@@ -73,31 +79,16 @@ const Main = () => {
         <ModalBackdrop />
         <ModalContent>
           <ModalHeader className="flex-col items-center gap-0.5">
-            <Heading>Add New Task</Heading>
+            
             
             <Divider className="my-[5px] w-[100%]" />
           </ModalHeader>
           <ModalBody className="mb-4">
-            <Input
-            variant="rounded"
-            size="xl"
-            isDisabled={false}
-          >
-            <InputField placeholder="Add it here.." />
-          </Input>
+           <Text>Coming soon</Text>
         </ModalBody>
         <ModalFooter className="flex-col items-start">
 
-              <Button
-            size="lg"
-            className="bg-primary-500 px-6 py-2 rounded-full items-center self-center"
-            variant='solid'
-            onPress={() => {
-                setShowModal2(true);
-              }}
-          >
-            <ButtonText>  Add It  </ButtonText>
-          </Button>
+             
            
             
 

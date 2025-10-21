@@ -22,7 +22,7 @@ import React from 'react';
 import { Fab, FabIcon } from '@/components/ui/fab';
 import { toggleTheme, getCurrentTheme } from '@/lib/themeManager';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/components/useColorScheme';
 import { useState } from 'react';
 import { Colors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
@@ -40,9 +40,9 @@ function Sidebar() {
   const auth = getAuth(app);
     const [email, setEmail] = useState('');
     const [user, setUser] = useState(auth.currentUser);
-     const displayName = user?.displayName ?? user?.email ?? '';
-      const colorScheme = useColorScheme();
-  const backgroundColor = Colors[colorScheme ?? 'light'].background;
+   const displayName = user?.displayName ?? user?.email ?? '';
+    const colorScheme = useColorScheme();
+  const backgroundColor = Colors[colorScheme].background;
   const router = useRouter();
 
   return (

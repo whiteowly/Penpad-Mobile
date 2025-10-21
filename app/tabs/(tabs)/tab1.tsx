@@ -1,7 +1,5 @@
-import EditScreenInfo from '@/components/EditScreenInfo';
 import { Center } from '@/components/ui/center';
 import { Divider } from '@/components/ui/divider';
-import { Heading } from '@/components/ui/heading';
 import { Text } from '@/components/ui/text';
 import { Input, InputField, InputSlot, InputIcon } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
@@ -9,15 +7,17 @@ import { Box } from '@/components/ui/box';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 
 import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
 import { Colors } from '@/constants/Colors';
-import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
+import { EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Image } from '@/components/ui/image';
+import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { useColorScheme } from '@/components/useColorScheme';
 
 
 export default function Tab1() {
@@ -68,29 +68,35 @@ export default function Tab1() {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
-      setStatusMessage(`Check email or password. `);
+      setStatusMessage('Login failed.');
     }
   };
 
   const displayName = user?.displayName ?? user?.email ?? '';
   return (
-    <Center className="flex-1">
-    <VStack space="sm" className="w-[80%]">
-        <Image
-                    source={iconImage}
-                    accessibilityLabel="PenPad logo"
-                    resizeMode="contain"
-                      size='2xl' 
-                      className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
-                  />
-        <Text
-          className="text-3xl self-center text-bold" 
-        >
-          {user ? `Heyy, ${displayName}` : 'Login'}
-        </Text>
-        
-        <Divider className='my-[20px] w-[100%]'/>
-        {!user && (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <Center className="flex-1">
+        <VStack space="sm" className="w-[80%]">
+          <Image
+            source={iconImage}
+            accessibilityLabel="PenPad logo"
+            resizeMode="contain"
+            size='2xl'
+            className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
+          />
+          <Text
+            className="text-3xl self-center text-bold"
+            style={{ color: Colors[colorScheme].text }}
+          >
+            {user ? `Heyy, ${displayName}` : 'Login'}
+          </Text>
+
+          <Divider className='my-[20px] w-[100%]'/>
+          {!user && (
           <Input 
             variant="rounded"
             size="xl"
@@ -105,7 +111,7 @@ export default function Tab1() {
               autoCapitalize="none"
             />
           </Input>
-        )}
+          )}
         <Input 
           variant="rounded"
           size="xl"
@@ -117,12 +123,12 @@ export default function Tab1() {
             <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
                   as={showPassword ? EyeIcon : EyeOffIcon}
-                  color={Colors[colorScheme ?? 'light'].text}
+                  color={Colors[colorScheme].text}
                 />
             </InputSlot>
         </Input>
         <Box className="items-end w-full">
-          <Link href="/modal">
+          <Link onPress={() => router.push('/tabs/(tabs)/forgotPwd')}>
             <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
           </Link>
         </Box>
@@ -156,5 +162,6 @@ export default function Tab1() {
 
       </VStack>
     </Center>
+    </KeyboardAvoidingView>
   );
 }

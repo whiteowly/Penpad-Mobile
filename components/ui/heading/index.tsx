@@ -3,6 +3,22 @@ import { H1, H2, H3, H4, H5, H6 } from '@expo/html-elements';
 import { headingStyle } from './styles';
 import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
 import { cssInterop } from 'nativewind';
+import type { StyleProp, TextStyle } from 'react-native';
+
+const mergeFontStyle = (
+  style: StyleProp<TextStyle> | undefined,
+  fontFamily: string
+): StyleProp<TextStyle> => {
+  const base: TextStyle = { fontFamily };
+
+  if (!style) {
+    return base;
+  }
+
+  return Array.isArray(style)
+    ? [base, ...style]
+    : [base, style];
+};
 
 type IHeadingProps = VariantProps<typeof headingStyle> &
   React.ComponentPropsWithoutRef<typeof H1> & {
@@ -33,24 +49,37 @@ const MappedHeading = memo(
       },
       ref
     ) {
+      const { style, ...restProps } = props;
+
+      const computedClassName = headingStyle({
+        size,
+        isTruncated: isTruncated as boolean,
+        bold: bold as boolean,
+        underline: underline as boolean,
+        strikeThrough: strikeThrough as boolean,
+        sub: sub as boolean,
+        italic: italic as boolean,
+        highlight: highlight as boolean,
+        class: className,
+      });
+
+      const resolvedFontFamily =
+        bold === false ? 'Poppins_500Medium' : 'Poppins_700Bold';
+
+      const mergedStyle = mergeFontStyle(
+        style as StyleProp<TextStyle>,
+        resolvedFontFamily
+      );
+
       switch (size) {
         case '5xl':
         case '4xl':
         case '3xl':
           return (
             <H1
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -58,18 +87,9 @@ const MappedHeading = memo(
         case '2xl':
           return (
             <H2
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -77,18 +97,9 @@ const MappedHeading = memo(
         case 'xl':
           return (
             <H3
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -96,18 +107,9 @@ const MappedHeading = memo(
         case 'lg':
           return (
             <H4
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -115,18 +117,9 @@ const MappedHeading = memo(
         case 'md':
           return (
             <H5
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -135,18 +128,9 @@ const MappedHeading = memo(
         case 'xs':
           return (
             <H6
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -154,18 +138,9 @@ const MappedHeading = memo(
         default:
           return (
             <H4
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
+              className={computedClassName}
+              style={mergedStyle}
+              {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
             />
@@ -188,29 +163,53 @@ const Heading = memo(
       sub,
       italic,
       highlight,
+      style,
+      ...restProps
     } = props;
+
+    const computedClassName = headingStyle({
+      size,
+      isTruncated: isTruncated as boolean,
+      bold: bold as boolean,
+      underline: underline as boolean,
+      strikeThrough: strikeThrough as boolean,
+      sub: sub as boolean,
+      italic: italic as boolean,
+      highlight: highlight as boolean,
+      class: className,
+    });
+
+    const incomingStyle = style as StyleProp<TextStyle>;
+    const resolvedFontFamily =
+      bold === false ? 'Poppins_500Medium' : 'Poppins_700Bold';
+
+    const mergedStyle = mergeFontStyle(incomingStyle, resolvedFontFamily);
 
     if (AsComp) {
       return (
         <AsComp
-          className={headingStyle({
-            size,
-            isTruncated: isTruncated as boolean,
-            bold: bold as boolean,
-            underline: underline as boolean,
-            strikeThrough: strikeThrough as boolean,
-            sub: sub as boolean,
-            italic: italic as boolean,
-            highlight: highlight as boolean,
-            class: className,
-          })}
-          {...props}
+          className={computedClassName}
+          style={mergedStyle}
+          {...restProps}
         />
       );
     }
 
     return (
-      <MappedHeading className={className} size={size} ref={ref} {...props} />
+      <MappedHeading
+        className={className}
+        size={size}
+        isTruncated={isTruncated}
+        bold={bold}
+        underline={underline}
+        strikeThrough={strikeThrough}
+        sub={sub}
+        italic={italic}
+        highlight={highlight}
+        style={incomingStyle}
+        ref={ref}
+        {...restProps}
+      />
     );
   })
 );

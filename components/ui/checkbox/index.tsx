@@ -86,7 +86,7 @@ const checkboxIndicatorStyle = tva({
 });
 
 const checkboxLabelStyle = tva({
-  base: 'text-typography-600 data-[checked=true]:text-typography-900 data-[hover=true]:text-typography-900 data-[hover=true]:data-[checked=true]:text-typography-900 data-[hover=true]:data-[checked=true]:data-[disabled=true]:text-typography-900 data-[hover=true]:data-[disabled=true]:text-typography-400 data-[active=true]:text-typography-900 data-[active=true]:data-[checked=true]:text-typography-900 data-[disabled=true]:opacity-40 web:select-none',
+  base: 'font-body text-typography-600 data-[checked=true]:text-typography-900 data-[hover=true]:text-typography-900 data-[hover=true]:data-[checked=true]:text-typography-900 data-[hover=true]:data-[checked=true]:data-[disabled=true]:text-typography-900 data-[hover=true]:data-[disabled=true]:text-typography-400 data-[active=true]:text-typography-900 data-[active=true]:data-[checked=true]:text-typography-900 data-[disabled=true]:opacity-40 web:select-none',
   parentVariants: {
     size: {
       lg: 'text-lg',
@@ -219,7 +219,10 @@ const CheckboxIcon = React.forwardRef<
         parentVariants: {
           size: parentSize,
         },
-        size,
+        size:
+          typeof size === 'string' && (size === 'sm' || size === 'md' || size === 'lg')
+            ? size
+            : undefined,
         class: className,
       })}
       {...props}

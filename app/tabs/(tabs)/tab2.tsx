@@ -13,12 +13,18 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
+import {
+  doc,
+  getFirestore,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 import { app } from '../../../firebaseConfig';
 import { useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
-import { useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
 import {
   FormControl,
   FormControlLabel,
@@ -32,6 +38,8 @@ import {
 import { AlertCircleIcon } from '@/components/ui/icon';
 import React from 'react';
 import { Image } from '@/components/ui/image';
+import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { useColorScheme } from '@/components/useColorScheme';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -90,15 +98,36 @@ export default function Tab2() {
       return;
     }
     try {
+      const trimmedEmail = email.trim();
+      const normalizedEmail = trimmedEmail.toLowerCase();
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        email,
+        normalizedEmail,
         password
       );
       const user = userCredential.user;
       await updateProfile(user, {
         displayName: username,
       });
+
+      try {
+        const db = getFirestore(app);
+        // Store profile metadata so password reset checks can find this user.
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            email: trimmedEmail,
+            emailLowerCase: normalizedEmail,
+            username: username.trim(),
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (firestoreError) {
+        console.error('Failed to persist user profile:', firestoreError);
+      }
+
       setStatusVariant('success');
       setStatusMessage('Account created successfully. Redirecting...');
       router.replace('/tasks'); // or '/main' if you want to auto-login
@@ -130,7 +159,12 @@ export default function Tab2() {
   );
 
   return (
-    <Center className="flex-1">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+  <Center className="flex-1">
       <Image
             source={iconImage}
             accessibilityLabel="PenPad logo"
@@ -140,13 +174,13 @@ export default function Tab2() {
           />
       <Text
         className="text-2xl text-bold"
-        style={{ fontFamily: 'Poppins_600SemiBold' }}
+        style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
       >
         Create Your Account
       </Text>
-      <Divider className="my-[30px] w-[80%]" />
+      <Divider className="my-[20px] w-[80%]" />
 
-      <VStack space="md" className="w-[80%]">
+      <VStack space="sm" className="w-[80%]">
         <FormControl
           isInvalid={isInvalid}
           size="lg"
@@ -154,7 +188,7 @@ export default function Tab2() {
           isReadOnly={false}
           isRequired={false}
         >
-          <VStack space="md">
+          <VStack space="sm">
           <Input
             variant="rounded"
             size="xl"
@@ -199,7 +233,7 @@ export default function Tab2() {
             <InputSlot className="pr-3" onPress={handlestate}>
               <InputIcon
                 as={showPassword ? EyeIcon : EyeOffIcon}
-                color={Colors[colorScheme ?? 'light'].text} />
+                color={Colors[colorScheme].text} />
             </InputSlot>
           </Input>
           <Input
@@ -218,7 +252,7 @@ export default function Tab2() {
             <InputSlot className="pr-3" onPress={handlestate}>
               <InputIcon
                 as={showPassword ? EyeIcon : EyeOffIcon}
-                color={Colors[colorScheme ?? 'light'].text} />
+                color={Colors[colorScheme].text} />
             </InputSlot>
 
           </Input>
@@ -254,5 +288,6 @@ export default function Tab2() {
       </VStack>
 
     </Center>
+    </KeyboardAvoidingView>
   );
 }

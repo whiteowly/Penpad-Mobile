@@ -50,7 +50,7 @@ import { HStack } from '@/components/ui/hstack';
 const Profile = () => {
  
   const colorScheme = useColorScheme();
-  const backgroundColor = Colors[colorScheme ?? 'light'].background;
+  const backgroundColor = Colors[colorScheme].background;
   const auth = getAuth(app);
   const router = useRouter();
 
@@ -187,9 +187,12 @@ const Profile = () => {
             <ButtonIcon as={ArrowLeftIcon} />
            </Button>
           </Box>
-          <Heading className="flex-1 text-center text-3xl font-bold text-typography-900">
-            Profile
-          </Heading>
+          <Text
+                  className="text-4xl text-bold"
+                  style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+                >
+                  Profile
+                </Text>
           <Box className="w-[56px]" />
         </Box>
         <Divider className="my-[1px] w-full" />
@@ -213,11 +216,12 @@ const Profile = () => {
           <Box>
             <VStack>
               <Text></Text>
-            <Text size="2xl" 
-              
-               className="text-center mt-4 mb-2 font-bold text-typography-600">
-              Account Management
-            </Text>
+            <Text
+                    className="text-2xl text-bold "
+                    style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+                  >
+                    Account Management
+                  </Text>
             <Divider className="my-[10px] w-[100%]" />
               <Pressable 
             className="gap-3 flex-row items-center p-2 rounded-md"
@@ -243,10 +247,14 @@ const Profile = () => {
       >
         <ModalBackdrop />
         <ModalContent>
-          <ModalHeader className="flex-col items-start gap-0.5">
-            <Heading>Enter Current password</Heading>
-            <Text size="sm">Incase you're an imposter</Text>
-          </ModalHeader>
+          <ModalHeader className="flex-col items-center gap-0.5">
+                        <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
+                        size="xl"
+                        >Enter Current Password</Text>
+                         
+                         
+                        <Divider className="my-[5px] w-full" />
+                      </ModalHeader>
           <ModalBody className="mb-4">
             <Input>
               <InputField
@@ -258,7 +266,7 @@ const Profile = () => {
               <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
                   as={showPassword ? EyeIcon : EyeOffIcon}
-                  color={Colors[colorScheme ?? 'light'].text}
+                  color={Colors[colorScheme].text}
                 />
             </InputSlot>
             </Input>
@@ -274,7 +282,7 @@ const Profile = () => {
               className="w-full"
               isDisabled={!currentPassword || isUpdatingPassword}
             >
-              <ButtonText>Trust me Bro</ButtonText>
+              <ButtonText>Confirm Password</ButtonText>
             </Button>
             <Button
               variant="link"
@@ -300,10 +308,14 @@ const Profile = () => {
       >
         <ModalBackdrop />
         <ModalContent>
-          <ModalHeader className="flex-col items-start gap-0.5">
-            <Heading>Enter your new password</Heading>
-            
-          </ModalHeader>
+          <ModalHeader className="flex-col items-center gap-0.5">
+                        <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
+                        size="xl"
+                        >Enter your new password</Text>
+                         
+                         
+                        <Divider className="my-[5px] w-full" />
+                      </ModalHeader>
           <ModalBody className="mb-4">
             <VStack space="3">
               <Input>
@@ -317,7 +329,7 @@ const Profile = () => {
                 <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
             as={showPassword ? EyeIcon : EyeOffIcon}
-            color={Colors[colorScheme ?? 'light'].text}/>
+            color={Colors[colorScheme].text}/>
             </InputSlot>
               </Input>
               <Text size='sm'></Text>
@@ -332,7 +344,7 @@ const Profile = () => {
                 <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
             as={showPassword ? EyeIcon : EyeOffIcon}  
-            color={Colors[colorScheme ?? 'light'].text}/>
+            color={Colors[colorScheme].text}/>
                </InputSlot>
               </Input>
             </VStack>
@@ -367,11 +379,11 @@ const Profile = () => {
         </ModalContent>
       </Modal>
 
-            <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
+            {/* <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
             onPress={() => {router.push('/tasks'); }}>
               <Icon as={RepeatIcon} size="lg" className="text-typography-600" />
               <Text size="lg">Update Email Address</Text>
-            </Pressable>
+            </Pressable> */}
             <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
              onPress={() => {
               setDeletePassword('');
@@ -414,7 +426,7 @@ const Profile = () => {
               <InputSlot className="pr-3" onPress={handleDeletePasswordToggle}>
                 <InputIcon
                   as={showDeletePassword ? EyeIcon : EyeOffIcon}
-                  color={Colors[colorScheme ?? 'light'].text}
+                  color={Colors[colorScheme].text}
                 />
               </InputSlot>
             </Input>
@@ -453,11 +465,12 @@ const Profile = () => {
         </Box>
         <Box>
             <Text></Text>
-            <Text size="2xl" 
-              
-               className="text-center mt-4 mb-2 font-bold text-typography-600">
-              Usage Statistics
-            </Text>
+           <Text
+                   className="text-2xl text-bold"
+                   style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+                 >
+                    Usage Statistics
+                 </Text>
             <Divider className="my-[10px] w-[100%]" />
             <Text size="lg">Join Date: {joinDate} </Text>
             <Text size="lg">Total Tasks Created: {totalCount}</Text>
@@ -486,10 +499,14 @@ const Profile = () => {
       >
         <ModalBackdrop />
         <ModalContent>
-          <ModalHeader>     
-            <Heading size="lg">Log Out</Heading>
-            
-          </ModalHeader>
+          <ModalHeader className="flex-col items-center gap-0.5">
+                        <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
+                        size="xl"
+                        >Log Out</Text>
+                         
+                         
+                        <Divider className="my-[5px] w-full" />
+                      </ModalHeader>
           <ModalBody>
             <Text>You sure?</Text>
           </ModalBody>
