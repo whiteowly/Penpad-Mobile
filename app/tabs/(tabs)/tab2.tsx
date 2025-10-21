@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/form-control';
 import { AlertCircleIcon } from '@/components/ui/icon';
 import React from 'react';
+import { Image } from '@/components/ui/image';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,6 +49,7 @@ export default function Tab2() {
   const colorScheme = useColorScheme();
   const [isInvalid, setIsInvalid] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const iconImage = require('../../../assets/images/logo1.png');
   const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
   const isSignUpDisabled =
     !email.trim() ||
@@ -129,12 +131,19 @@ export default function Tab2() {
 
   return (
     <Center className="flex-1">
-      <Heading
-        className="text-2xl"
+      <Image
+            source={iconImage}
+            accessibilityLabel="PenPad logo"
+            resizeMode="contain"
+              size='2xl' 
+              className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
+          />
+      <Text
+        className="text-2xl text-bold"
         style={{ fontFamily: 'Poppins_600SemiBold' }}
       >
         Create Your Account
-      </Heading>
+      </Text>
       <Divider className="my-[30px] w-[80%]" />
 
       <VStack space="md" className="w-[80%]">

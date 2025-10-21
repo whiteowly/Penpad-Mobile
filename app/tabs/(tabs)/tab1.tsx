@@ -17,6 +17,8 @@ import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
 import { Colors } from '@/constants/Colors';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
+import { Image } from '@/components/ui/image';
+
 
 export default function Tab1() {
   const auth = getAuth(app);
@@ -29,6 +31,7 @@ export default function Tab1() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusVariant, setStatusVariant] = useState<'error' | 'success' | null>(null);
   const isSignInDisabled = !email.trim() || !password.trim();
+  const iconImage = require('../../../assets/images/logo1.png');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -65,22 +68,28 @@ export default function Tab1() {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
-      setStatusMessage(`Login failed.`);
+      setStatusMessage(`Check email or password. `);
     }
   };
 
   const displayName = user?.displayName ?? user?.email ?? '';
   return (
     <Center className="flex-1">
-      <VStack space="md" className="w-[80%]">
-        <Heading
-          className="text-3xl self-center"
-          style={{ fontFamily: 'Poppins_600SemiBold' }}
+    <VStack space="sm" className="w-[80%]">
+        <Image
+                    source={iconImage}
+                    accessibilityLabel="PenPad logo"
+                    resizeMode="contain"
+                      size='2xl' 
+                      className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
+                  />
+        <Text
+          className="text-3xl self-center text-bold" 
         >
           {user ? `Heyy, ${displayName}` : 'Login'}
-        </Heading>
+        </Text>
         
-        <Divider className='my-[30px] w-[100%]'/>
+        <Divider className='my-[20px] w-[100%]'/>
         {!user && (
           <Input 
             variant="rounded"
