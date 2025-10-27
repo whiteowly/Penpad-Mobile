@@ -18,6 +18,7 @@ import { EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Image } from '@/components/ui/image';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { useColorScheme } from '@/components/useColorScheme';
+import { Spinner } from '@/components/ui/spinner';
 
 
 export default function Tab1() {
@@ -30,6 +31,7 @@ export default function Tab1() {
   const colorScheme = useColorScheme();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusVariant, setStatusVariant] = useState<'error' | 'success' | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const isSignInDisabled = !email.trim() || !password.trim();
   const iconImage = require('../../../assets/images/logo1.png');
 
@@ -58,6 +60,8 @@ export default function Tab1() {
     setStatusMessage(null);
     setStatusVariant(null);
 
+    setIsLoading(true);
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setPassword('');
@@ -69,6 +73,9 @@ export default function Tab1() {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
       setStatusMessage('Login failed.');
+    }
+    finally {
+      setIsLoading(false);
     }
   };
 
@@ -147,10 +154,17 @@ export default function Tab1() {
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
-            isDisabled={isSignInDisabled}
+            isDisabled={isSignInDisabled || isLoading}
             onPress={handleSignIn}
           >
-            <ButtonText> Sign In </ButtonText>
+            {isLoading ? (
+              <>
+                <Spinner size="small" color={Colors[colorScheme].text} className="mr-2" />
+                <ButtonText>Signing in...</ButtonText>
+              </>
+            ) : (
+              <ButtonText> Sign In </ButtonText>
+            )}
           </Button>
         </Box>
         <Box className='flex-row justify-center w-full'>

@@ -40,6 +40,7 @@ import React from 'react';
 import { Image } from '@/components/ui/image';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { useColorScheme } from '@/components/useColorScheme';
+import { Spinner } from '@/components/ui/spinner';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -59,6 +60,7 @@ export default function Tab2() {
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const iconImage = require('../../../assets/images/logo1.png');
   const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
   const isSignUpDisabled =
     !email.trim() ||
     !username.trim() ||
@@ -77,6 +79,8 @@ export default function Tab2() {
     }
     setStatusMessage(null);
     setStatusVariant(null);
+
+    setIsLoading(true);
 
     if (password.length < 6) {
       setIsInvalid(true);
@@ -136,6 +140,9 @@ export default function Tab2() {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
       setStatusMessage(`Failed to create account. ${message}`);
+    }
+    finally {
+      setIsLoading(false);
     }
   };
 
@@ -271,10 +278,17 @@ export default function Tab2() {
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
-            isDisabled={isSignUpDisabled}
+            isDisabled={isSignUpDisabled || isLoading}
             onPress={handleSignUp}
           >
-            <ButtonText>  Sign Up  </ButtonText>
+            {isLoading ? (
+              <>
+                <Spinner size="small" color={Colors[colorScheme].text} className="mr-2" />
+                <ButtonText>Signing up...</ButtonText>
+              </>
+            ) : (
+              <ButtonText>  Sign Up  </ButtonText>
+            )}
           </Button>
         </Box>
 

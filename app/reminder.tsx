@@ -45,12 +45,12 @@ const Main = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
-          <Box className="flex-row items-center justify-between mb-4">
+          <Box className="flex-row items-center mb-4">
             <Box className="items-start w-[56px]">
               <Sidebar />
             </Box>
            <Text
-                   className="text-4xl text-bold"
+                   className="text-3xl text-bold"
                    style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
                  >
                   Friends

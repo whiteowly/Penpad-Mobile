@@ -6,8 +6,7 @@ import { Text } from '@/components/ui/text';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Fab, FabIcon } from '@/components/ui/fab';
-import { AddIcon, CheckIcon, TrashIcon, Icon,ChevronUpIcon,
-  ChevronDownIcon, } from '@/components/ui/icon';
+import { AddIcon, CheckIcon, TrashIcon, Icon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icon';
 import Sidebar from './sidebar';
 import { Divider } from '@/components/ui/divider';
 import {
@@ -28,6 +27,7 @@ import {
   CheckboxLabel,
 } from '@/components/ui/checkbox';
 import { VStack } from '@/components/ui/vstack';
+import { ScrollView } from 'react-native';
 import { Pressable } from '@/components/ui/pressable';
 import {
   collection,
@@ -45,7 +45,6 @@ import {
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
-
 type SubtaskItem = {
   id: string;
   text: string;
@@ -57,7 +56,7 @@ const Main = () => {
   const backgroundColor = Colors[colorScheme].background;
 
   const [showModal, setShowModal] = useState(false);
-  const [showModal1, setShowModal1] = useState(false);
+  const [pendingDeleteTodoId, setPendingDeleteTodoId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [newSubtasks, setNewSubtasks] = useState<string[]>(['']);
   const [isSaving, setIsSaving] = useState(false);
@@ -84,10 +83,7 @@ const Main = () => {
     alert(`Could not load tasks. ${message}`);
   }, []);
 
-  const todoHookOptions = useMemo(
-    () => ({ onError: handleLoadError }),
-    [handleLoadError]
-  );
+  const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
   const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
 
@@ -125,13 +121,7 @@ const Main = () => {
 
       try {
         const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
-        await setDoc(
-          statsRef,
-          {
-            totalCreated: increment(1),
-          },
-          { merge: true }
-        );
+        await setDoc(statsRef, { totalCreated: increment(1) }, { merge: true });
       } catch (statsError) {
         console.error('Failed to update created-task count', statsError);
       }
@@ -158,21 +148,12 @@ const Main = () => {
       const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
       const willComplete = !todo.completed;
 
-      await updateDoc(todoRef, {
-        completed: willComplete,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(todoRef, { completed: willComplete, updatedAt: serverTimestamp() });
 
       if (willComplete) {
         try {
           const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
-          await setDoc(
-            statsRef,
-            {
-              totalCompleted: increment(1),
-            },
-            { merge: true }
-          );
+          await setDoc(statsRef, { totalCompleted: increment(1) }, { merge: true });
         } catch (statsError) {
           console.error('Failed to update completed-task count', statsError);
         }
@@ -200,6 +181,25 @@ const Main = () => {
       alert(`Could not delete task. ${message}`);
     } finally {
       setDeletingId((current) => (current === todo.id ? null : current));
+    }
+  };
+
+  const handleDeleteSubtask = async (todoId: string, subId: string) => {
+    if (!activeUserId) {
+      alert('You need to be signed in to delete subtasks.');
+      return;
+    }
+
+    try {
+      setDeletingId(subId);
+      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', subId);
+      await deleteDoc(subRef);
+    } catch (error) {
+      console.error('Failed to delete subtask', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Could not delete subtask. ${message}`);
+    } finally {
+      setDeletingId((current) => (current === subId ? null : current));
     }
   };
 
@@ -268,249 +268,159 @@ const Main = () => {
 
     try {
       const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
-      await updateDoc(subRef, {
-        completed: !sub.completed,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(subRef, { completed: !sub.completed, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('Failed to update subtask', error);
       alert('Could not update subtask');
     }
   };
 
+  const pendingTodo = pendingDeleteTodoId ? todos.find((t) => t.id === pendingDeleteTodoId) : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
-        <Box className="flex-row items-center justify-between mb-4">
+        <Box className="flex-row items-center mb-4">
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
-          <Text
-                  className="text-4xl text-bold"
-                  style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
-                >
-                  Tasks
-                </Text>
+          <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
+            Tasks
+          </Text>
           <Box className="w-[56px]" />
         </Box>
+
         <Divider className="my-[1px] w-full" />
 
         <Box className="mt-6">
           <Text size="md" className="text-typography-700">
             {todos.length ? 'Current Tasks' : 'No tasks yet'}
           </Text>
-          {!isAuthenticated && (
-            <Text className="mt-2 text-typography-500">
-              Sign in to sync tasks across your devices.
-            </Text>
-          )}
-          <VStack space="md" className="mt-4">
-            {todos.length ? (
-              sortedTodos.map((todo) => {
+          {!isAuthenticated && <Text className="mt-2 text-typography-500">Sign in to sync tasks across your devices.</Text>}
+
+          <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
+            <VStack space="md">
+              {todos.length ? (
+                sortedTodos.map((todo) => {
                 const isExpanded = Boolean(expandedMap[todo.id]);
                 const hstackClass = `flex-row items-center justify-between bg-background-50 ${isExpanded ? 'rounded-t-xl' : 'rounded-xl'} border border-border-200 px-4 py-3`;
 
                 return (
                   <React.Fragment key={todo.id}>
-                  <HStack
-                    className={hstackClass}
-                  >
-                  <Checkbox
-                    value={todo.id}
-                    isChecked={todo.completed}
-                    onChange={() => handleToggleTodo(todo)}
-                    className="flex-1"
-                  >
-                    <CheckboxIndicator>
-                      <CheckboxIcon as={CheckIcon} />
-                    </CheckboxIndicator>
-                    <CheckboxLabel
-                      className={`ml-3 text-base ${todo.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}
-                    >
-                      {todo.text}
-                    </CheckboxLabel>
-                  </Checkbox>
-                  
-                  <Pressable
-                    className="ml-3 rounded-full p-2"
-                    onPress={() => toggleExpand(todo.id)}
-                    accessibilityLabel="Toggle subtasks"
-                  >
-                    <Icon
-                      as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon}
-                      size="lg"
-                    />
-                  </Pressable>
-                  <Pressable
-                    className="ml-3 rounded-full p-2"
-                    onPress={() => setShowModal1(true)}
-                    disabled={deletingId === todo.id}
-                    accessibilityLabel="Delete task"
-                  >
-                    <Icon
-                      as={TrashIcon}
-                      size="lg"
-                      className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'
-                        }`}
-                    />
-                  </Pressable>
-                  <Modal
-                    isOpen={showModal1}
-                    onClose={() => {
-                      setShowModal1(false);
-                    }}
-                    size="md"
-                  >
-                    <ModalBackdrop />
-                    <ModalContent>
-                      <ModalHeader className="flex-col items-center gap-0.5">
-              <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
-              size="xl"
-              >Delete Task</Text>
-               
-               
-              <Divider className="my-[5px] w-full" />
-            </ModalHeader>
+                    <HStack className={hstackClass}>
+                      <Checkbox value={todo.id} isChecked={todo.completed} onChange={() => handleToggleTodo(todo)} className="flex-1">
+                        <CheckboxIndicator>
+                          <CheckboxIcon as={CheckIcon} />
+                        </CheckboxIndicator>
+                        <CheckboxLabel className={`ml-3 text-base ${todo.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>
+                          {todo.text}
+                        </CheckboxLabel>
+                      </Checkbox>
 
-                      <ModalBody>
-                        <Text 
-                        size='lg'>You sure?</Text>
-                      </ModalBody>
-                      <ModalFooter>
-                        <Button
-                          variant="outline"
-                          action="secondary"
-                          className="mr-3"
-                          onPress={() => {
-                            setShowModal1(false);
-                          }}
+                      <Pressable className="ml-3 rounded-full p-2" onPress={() => toggleExpand(todo.id)} accessibilityLabel="Toggle subtasks">
+                        <Icon as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon} size="lg" />
+                      </Pressable>
 
-                        >
-                          <ButtonText>Nuh</ButtonText>
-                        </Button>
-                        <Button
-                          onPress={() => {
-                            handleDeleteTodo(todo);
-                            setShowModal1(false);
-                          }}
-                        >
-                          <ButtonText>Yuh</ButtonText>
-                        </Button>
-                      </ModalFooter>
-                    </ModalContent>
-                  </Modal>
-                </HStack>
-                {isExpanded && (
-                  <Box className="w-full bg-background-50 rounded-b-xl border border-border-200 border-t-0 px-4 py-3 pl-8">
-                    {(subtasksMap[todo.id] || []).length ? (
-                      (subtasksMap[todo.id] || []).map((sub, idx, arr) => (
-                        <React.Fragment key={sub.id}>
-                          <HStack className="flex-row items-center justify-between w-full py-2">
-                            <Checkbox
-                              value={sub.id}
-                              isChecked={sub.completed}
-                              onChange={() => handleToggleSubtask(todo.id, sub)}
-                              className="flex-1"
-                            >
-                              <CheckboxIndicator>
-                                <CheckboxIcon as={CheckIcon} />
-                              </CheckboxIndicator>
-                              <CheckboxLabel className={`ml-3 text-base ${sub.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>
-                                  {sub.text}
-                                </CheckboxLabel>
-                              </Checkbox>
-                            </HStack>
-                          {idx < (arr?.length ?? 0) - 1 && <Divider className="my-2 w-full" />}
-                        </React.Fragment>
-                      ))
-                    ) : (
-                      <Text className="text-typography-500">No subtasks yet</Text>
-                    )}
-
-                    <HStack className="w-full mt-3">
-                      <Input variant="rounded" size="md" className="flex-1">
-                        <InputField
-                          placeholder="Add subtask..."
-                          value={subtaskInputs[todo.id] ?? ''}
-                          onChangeText={(v) => setSubtaskInputs((p) => ({ ...p, [todo.id]: v }))}
-                        />
-                      </Input>
-                      <Button size="sm" className="bg-primary-500 px-6 py-2 rounded-full" onPress={() => { handleAddSubtask(todo.id, subtaskInputs[todo.id] ?? ''); setSubtaskInputs((p) => ({ ...p, [todo.id]: '' })); }}>
-                        <ButtonText>Add</ButtonText>
-                      </Button>
+                      <Pressable className="ml-3 rounded-full p-2" onPress={() => setPendingDeleteTodoId(todo.id)} disabled={deletingId === todo.id} accessibilityLabel="Delete task">
+                        <Icon as={TrashIcon} size="lg" className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'}`} />
+                      </Pressable>
                     </HStack>
-           
 
+                    {isExpanded && (
+                      <Box className="w-full bg-background-50 rounded-b-xl border border-border-200 border-t-0 px-4 py-3 pl-8 -mt-px">
+                        {(subtasksMap[todo.id] || []).length ? (
+                          (subtasksMap[todo.id] || []).map((sub, idx, arr) => (
+                            <React.Fragment key={sub.id}>
+                              <HStack className="flex-row items-center justify-between w-full py-2">
+                                <Checkbox value={sub.id} isChecked={sub.completed} onChange={() => handleToggleSubtask(todo.id, sub)} className="flex-1">
+                                  <CheckboxIndicator>
+                                    <CheckboxIcon as={CheckIcon} />
+                                  </CheckboxIndicator>
+                                  <CheckboxLabel className={`ml-3 text-base ${sub.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>{sub.text}</CheckboxLabel>
+                                </Checkbox>
 
-                  </Box>
-                )}
-                </React.Fragment>
-              );
+                                <Pressable className="ml-3 rounded-full p-2" onPress={() => handleDeleteSubtask(todo.id, sub.id)} disabled={deletingId === sub.id} accessibilityLabel="Delete subtask">
+                                  <Icon as={TrashIcon} size="sm" className={`text-error-600 ${deletingId === sub.id ? 'opacity-40' : 'opacity-90'}`} />
+                                </Pressable>
+                              </HStack>
+                              {idx < (arr?.length ?? 0) - 1 && <Divider className="my-2 w-full" />}
+                            </React.Fragment>
+                          ))
+                        ) : (
+                          <Text className="text-typography-500">No subtasks</Text>
+                        )}
+
+                        {!todo.completed && (
+                          <HStack space = 'sm'className="w-full mt-3">
+                            <Input variant="rounded" size="md" className="flex-1">
+                              <InputField placeholder="Add subtask..." value={subtaskInputs[todo.id] ?? ''} onChangeText={(v) => setSubtaskInputs((p) => ({ ...p, [todo.id]: v }))} />
+                            </Input>
+                            <Button size="md" className="bg-primary-500 px-6 py-2 rounded-full" onPress={() => { handleAddSubtask(todo.id, subtaskInputs[todo.id] ?? ''); setSubtaskInputs((p) => ({ ...p, [todo.id]: '' })); }}>
+                              <ButtonText>Add</ButtonText>
+                            </Button>
+                          </HStack>
+                        )}
+                      </Box>
+                    )}
+                  </React.Fragment>
+                );
               })
             ) : (
-              <Text className="text-typography-500 self-center justify-center">
-                Tap the add button to create your first task.
-              </Text>
+              <Text className="text-typography-500 self-center justify-center">Tap the add button to create your first task.</Text>
             )}
-          </VStack>
+            </VStack>
+          </ScrollView>
         </Box>
 
-        <Fab
-          placement="bottom right"
-          size="xl"
-          className="m-6"
-          onPress={() => setShowModal(true)}
-        >
-          <FabIcon as={AddIcon} />
-        </Fab>
-
-        <Modal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          size="lg"
-        >
+       
+        <Modal isOpen={Boolean(pendingDeleteTodoId)} onClose={() => setPendingDeleteTodoId(null)} size="md">
           <ModalBackdrop />
           <ModalContent>
             <ModalHeader className="flex-col items-center gap-0.5">
-              <Text style = {{fontFamily: 'Poppins_600SemiBold'}}
-              size="xl"
-              >Add New Task</Text>
-               
-               
+              <Text style={{ fontFamily: 'Poppins_600SemiBold' }} size="xl">Delete Task</Text>
+              <Divider className="my-[5px] w-full" />
+            </ModalHeader>
+            <ModalBody>
+             
+              {pendingTodo && <Text className="mt-2 text-typography-500">Delete "{pendingTodo.text}"?</Text>}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="outline" action="secondary" className="mr-3" onPress={() => setPendingDeleteTodoId(null)}>
+                <ButtonText>Nuh</ButtonText>
+              </Button>
+              <Button
+                onPress={() => {
+                  if (pendingTodo) handleDeleteTodo(pendingTodo);
+                  setPendingDeleteTodoId(null);
+                }}
+              >
+                <ButtonText>Yuh</ButtonText>
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Fab placement="bottom right" size="xl" className="m-6" onPress={() => setShowModal(true)}>
+          <FabIcon as={AddIcon} />
+        </Fab>
+
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg">
+          <ModalBackdrop />
+          <ModalContent>
+            <ModalHeader className="flex-col items-center gap-0.5">
+              <Text style={{ fontFamily: 'Poppins_600SemiBold' }} size="xl">Add New Task</Text>
               <Divider className="my-[5px] w-full" />
             </ModalHeader>
             <ModalBody className="mb-4 w-full">
               <Input variant="outline" size="xl">
-                <InputField
-                  
-                  placeholder="Add it here..."
-                  value={inputValue}
-                  onChangeText={setInputValue}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={() => handleAddTodo()}
-                />
+                <InputField placeholder="Add it here..." value={inputValue} onChangeText={setInputValue} autoFocus returnKeyType="done" onSubmitEditing={() => handleAddTodo()} />
               </Input>
             </ModalBody>
             <ModalFooter className="flex-col items-start gap-3 w-full">
-            <Pressable >
-
-            </Pressable>
-              <Button
-                size="lg"
-                className="w-full bg-primary-500"
-                onPress={handleAddTodo}
-                isDisabled={isSaving}
-              >
+              <Button size="lg" className="w-full bg-primary-500" onPress={handleAddTodo} isDisabled={isSaving}>
                 <ButtonText>Add It</ButtonText>
               </Button>
-              <Button
-                variant="link"
-                size="sm"
-                onPress={() => setShowModal(false)}
-                className="gap-1"
-              >
+              <Button variant="link" size="sm" onPress={() => setShowModal(false)} className="gap-1">
                 <ButtonIcon as={ArrowLeftIcon} />
                 <ButtonText>Nevermind</ButtonText>
               </Button>
@@ -523,3 +433,5 @@ const Main = () => {
 };
 
 export default Main;
+
+    
