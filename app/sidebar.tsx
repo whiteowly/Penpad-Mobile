@@ -48,14 +48,19 @@ function Sidebar() {
   return (
     <>
       
-      <Fab
+      {/* <Fab
         placement="top left"
         size="xl"
         className="relative top-0 left-0 z-10"
         onPress={() => setShowDrawer(true)}
       >
         <FabIcon as={MenuIcon} />
-      </Fab>
+      </Fab> */}
+       <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => setShowDrawer(true)}>
+              <Icon as={MenuIcon} size="2xl" className="text-typography-600" />
+  
+            </Pressable>
       <Drawer
         isOpen={showDrawer}
         onClose={() => {
@@ -111,7 +116,7 @@ function Sidebar() {
                 size="lg"
                 className="text-typography-600"
               />
-              <Text>Reminders</Text>
+              <Text>Friends</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
             onPress={() => {router.push('/upcoming'); setShowDrawer(false);}}>

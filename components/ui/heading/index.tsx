@@ -62,14 +62,7 @@ const MappedHeading = memo(
         highlight: highlight as boolean,
         class: className,
       });
-
-      const resolvedFontFamily =
-        bold === false ? 'Poppins_500Medium' : 'Poppins_700Bold';
-
-      const mergedStyle = mergeFontStyle(
-        style as StyleProp<TextStyle>,
-        resolvedFontFamily
-      );
+      // Do not merge font here; top-level `Heading` will pass the merged style down.
 
       switch (size) {
         case '5xl':
@@ -78,7 +71,7 @@ const MappedHeading = memo(
           return (
             <H1
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
@@ -88,7 +81,7 @@ const MappedHeading = memo(
           return (
             <H2
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
@@ -98,7 +91,7 @@ const MappedHeading = memo(
           return (
             <H3
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
@@ -108,7 +101,7 @@ const MappedHeading = memo(
           return (
             <H4
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
@@ -118,7 +111,7 @@ const MappedHeading = memo(
           return (
             <H5
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
               // @ts-expect-error : type issue
               ref={ref}
@@ -129,9 +122,8 @@ const MappedHeading = memo(
           return (
             <H6
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
-              // @ts-expect-error : type issue
               ref={ref}
             />
           );
@@ -139,9 +131,9 @@ const MappedHeading = memo(
           return (
             <H4
               className={computedClassName}
-              style={mergedStyle}
+              style={style as StyleProp<TextStyle>}
               {...restProps}
-              // @ts-expect-error : type issue
+            
               ref={ref}
             />
           );
@@ -179,6 +171,7 @@ const Heading = memo(
       class: className,
     });
 
+    
     const incomingStyle = style as StyleProp<TextStyle>;
     const resolvedFontFamily =
       bold === false ? 'Poppins_500Medium' : 'Poppins_700Bold';
@@ -206,7 +199,7 @@ const Heading = memo(
         sub={sub}
         italic={italic}
         highlight={highlight}
-        style={incomingStyle}
+        style={mergedStyle}
         ref={ref}
         {...restProps}
       />

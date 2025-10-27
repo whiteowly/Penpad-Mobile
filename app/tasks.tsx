@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Box } from '@/components/ui/box';
 import { Heading } from '@/components/ui/heading';
@@ -6,7 +6,8 @@ import { Text } from '@/components/ui/text';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Fab, FabIcon } from '@/components/ui/fab';
-import { AddIcon, CheckIcon, TrashIcon, Icon } from '@/components/ui/icon';
+import { AddIcon, CheckIcon, TrashIcon, Icon,ChevronUpIcon,
+  ChevronDownIcon, } from '@/components/ui/icon';
 import Sidebar from './sidebar';
 import { Divider } from '@/components/ui/divider';
 import {
@@ -37,9 +38,19 @@ import {
   deleteDoc,
   setDoc,
   increment,
+  onSnapshot,
+  query,
+  orderBy,
 } from 'firebase/firestore';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
+
+
+type SubtaskItem = {
+  id: string;
+  text: string;
+  completed: boolean;
+};
 
 const Main = () => {
   const colorScheme = useColorScheme();
@@ -48,8 +59,26 @@ const Main = () => {
   const [showModal, setShowModal] = useState(false);
   const [showModal1, setShowModal1] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [newSubtasks, setNewSubtasks] = useState<string[]>(['']);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, SubtaskItem[]>>({});
+  const subUnsubs = useRef<Record<string, () => void>>({});
+  const [subtaskInputs, setSubtaskInputs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    return () => {
+      // cleanup any remaining subcollection listeners
+      Object.values(subUnsubs.current).forEach((unsub) => {
+        try {
+          unsub && unsub();
+        } catch (e) {
+          // ignore
+        }
+      });
+    };
+  }, []);
 
   const handleLoadError = useCallback((_error: unknown, message: string) => {
     alert(`Could not load tasks. ${message}`);
@@ -77,11 +106,23 @@ const Main = () => {
 
     try {
       setIsSaving(true);
-      await addDoc(collection(db, 'users', activeUserId, 'todos'), {
+      const todoRef = await addDoc(collection(db, 'users', activeUserId, 'todos'), {
         text: trimmedValue,
         completed: false,
         createdAt: serverTimestamp(),
       });
+
+      // create subtasks if any
+      for (const s of newSubtasks) {
+        const t = s.trim();
+        if (!t) continue;
+        await addDoc(collection(db, 'users', activeUserId, 'todos', todoRef.id, 'subtasks'), {
+          text: t,
+          completed: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+
       try {
         const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
         await setDoc(
@@ -94,7 +135,9 @@ const Main = () => {
       } catch (statsError) {
         console.error('Failed to update created-task count', statsError);
       }
+
       setInputValue('');
+      setNewSubtasks(['']);
       setShowModal(false);
     } catch (error) {
       console.error('Failed to add task', error);
@@ -160,6 +203,82 @@ const Main = () => {
     }
   };
 
+  const toggleExpand = (todoId: string) => {
+    const isExpanded = Boolean(expandedMap[todoId]);
+    if (isExpanded) {
+      setExpandedMap((prev) => ({ ...prev, [todoId]: false }));
+      const unsub = subUnsubs.current[todoId];
+      if (unsub) {
+        unsub();
+        delete subUnsubs.current[todoId];
+      }
+      return;
+    }
+
+    setExpandedMap((prev) => ({ ...prev, [todoId]: true }));
+
+    if (!activeUserId) return;
+
+    // subscribe to subtasks for real-time updates
+    const subCol = collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks');
+    const q = query(subCol, orderBy('createdAt', 'asc'));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: SubtaskItem[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            text: typeof data.text === 'string' ? data.text : '',
+            completed: Boolean(data.completed),
+          };
+        });
+        setSubtasksMap((prev) => ({ ...prev, [todoId]: items }));
+      },
+      (err) => console.error('Failed to load subtasks', err)
+    );
+
+    subUnsubs.current[todoId] = unsub;
+  };
+
+  const handleAddSubtask = async (todoId: string, text: string) => {
+    if (!activeUserId) {
+      alert('Sign in to add subtasks');
+      return;
+    }
+    const t = text.trim();
+    if (!t) return;
+    try {
+      await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
+        text: t,
+        completed: false,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Failed to add subtask', error);
+      alert('Could not add subtask');
+    }
+  };
+
+  const handleToggleSubtask = async (todoId: string, sub: SubtaskItem) => {
+    if (!activeUserId) {
+      alert('Sign in to update subtasks');
+      return;
+    }
+
+    try {
+      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+      await updateDoc(subRef, {
+        completed: !sub.completed,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Failed to update subtask', error);
+      alert('Could not update subtask');
+    }
+  };
+
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
@@ -188,11 +307,15 @@ const Main = () => {
           )}
           <VStack space="md" className="mt-4">
             {todos.length ? (
-              sortedTodos.map((todo) => (
-                <HStack
-                  key={todo.id}
-                  className="flex-row items-center justify-between bg-background-50 rounded-xl border border-border-200 px-4 py-3"
-                >
+              sortedTodos.map((todo) => {
+                const isExpanded = Boolean(expandedMap[todo.id]);
+                const hstackClass = `flex-row items-center justify-between bg-background-50 ${isExpanded ? 'rounded-t-xl' : 'rounded-xl'} border border-border-200 px-4 py-3`;
+
+                return (
+                  <React.Fragment key={todo.id}>
+                  <HStack
+                    className={hstackClass}
+                  >
                   <Checkbox
                     value={todo.id}
                     isChecked={todo.completed}
@@ -203,18 +326,26 @@ const Main = () => {
                       <CheckboxIcon as={CheckIcon} />
                     </CheckboxIndicator>
                     <CheckboxLabel
-                      className={`ml-3 text-base ${todo.completed
-                        ? 'line-through text-typography-400'
-                        : 'text-typography-900'
-                        }`}
+                      className={`ml-3 text-base ${todo.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}
                     >
                       {todo.text}
                     </CheckboxLabel>
                   </Checkbox>
+                  
+                  <Pressable
+                    className="ml-3 rounded-full p-2"
+                    onPress={() => toggleExpand(todo.id)}
+                    accessibilityLabel="Toggle subtasks"
+                  >
+                    <Icon
+                      as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon}
+                      size="lg"
+                    />
+                  </Pressable>
                   <Pressable
                     className="ml-3 rounded-full p-2"
                     onPress={() => setShowModal1(true)}
-                    isDisabled={deletingId === todo.id}
+                    disabled={deletingId === todo.id}
                     accessibilityLabel="Delete task"
                   >
                     <Icon
@@ -227,7 +358,7 @@ const Main = () => {
                   <Modal
                     isOpen={showModal1}
                     onClose={() => {
-                      setShowModal(false);
+                      setShowModal1(false);
                     }}
                     size="md"
                   >
@@ -270,7 +401,53 @@ const Main = () => {
                     </ModalContent>
                   </Modal>
                 </HStack>
-              ))
+                {isExpanded && (
+                  <Box className="w-full bg-background-50 rounded-b-xl border border-border-200 border-t-0 px-4 py-3 pl-8">
+                    {(subtasksMap[todo.id] || []).length ? (
+                      (subtasksMap[todo.id] || []).map((sub, idx, arr) => (
+                        <React.Fragment key={sub.id}>
+                          <HStack className="flex-row items-center justify-between w-full py-2">
+                            <Checkbox
+                              value={sub.id}
+                              isChecked={sub.completed}
+                              onChange={() => handleToggleSubtask(todo.id, sub)}
+                              className="flex-1"
+                            >
+                              <CheckboxIndicator>
+                                <CheckboxIcon as={CheckIcon} />
+                              </CheckboxIndicator>
+                              <CheckboxLabel className={`ml-3 text-base ${sub.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>
+                                  {sub.text}
+                                </CheckboxLabel>
+                              </Checkbox>
+                            </HStack>
+                          {idx < (arr?.length ?? 0) - 1 && <Divider className="my-2 w-full" />}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <Text className="text-typography-500">No subtasks yet</Text>
+                    )}
+
+                    <HStack className="w-full mt-3">
+                      <Input variant="rounded" size="md" className="flex-1">
+                        <InputField
+                          placeholder="Add subtask..."
+                          value={subtaskInputs[todo.id] ?? ''}
+                          onChangeText={(v) => setSubtaskInputs((p) => ({ ...p, [todo.id]: v }))}
+                        />
+                      </Input>
+                      <Button size="sm" className="bg-primary-500 px-6 py-2 rounded-full" onPress={() => { handleAddSubtask(todo.id, subtaskInputs[todo.id] ?? ''); setSubtaskInputs((p) => ({ ...p, [todo.id]: '' })); }}>
+                        <ButtonText>Add</ButtonText>
+                      </Button>
+                    </HStack>
+           
+
+
+                  </Box>
+                )}
+                </React.Fragment>
+              );
+              })
             ) : (
               <Text className="text-typography-500 self-center justify-center">
                 Tap the add button to create your first task.
@@ -317,6 +494,9 @@ const Main = () => {
               </Input>
             </ModalBody>
             <ModalFooter className="flex-col items-start gap-3 w-full">
+            <Pressable >
+
+            </Pressable>
               <Button
                 size="lg"
                 className="w-full bg-primary-500"

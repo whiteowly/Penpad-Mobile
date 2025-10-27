@@ -53,7 +53,7 @@ const Main = () => {
                    className="text-4xl text-bold"
                    style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
                  >
-                  Reminders
+                  Friends
                  </Text>
             <Box className="w-[56px]" />
           </Box>

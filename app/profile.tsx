@@ -179,23 +179,24 @@ const Profile = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <Box className="flex-1 px-6" style={{ backgroundColor }}>
-        <Box className="flex-row items-center justify-between mb-4">
+        <Box className="flex-row items-center mb-4">
           <Box className="items-start w-[56px]">
            <Button
+            size="xl"
             variant='link'
             onPress={() => {router.back(); }}>
             <ButtonIcon as={ArrowLeftIcon} />
            </Button>
           </Box>
           <Text
-                  className="text-4xl text-bold"
+                  className="text-3xl text-bold"
                   style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
                 >
                   Profile
                 </Text>
           <Box className="w-[56px]" />
         </Box>
-        <Divider className="my-[1px] w-full" />
+       
 
         <Box className="items-center mt-12">
             
