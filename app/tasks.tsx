@@ -299,14 +299,14 @@ const Main = () => {
           {!isAuthenticated && <Text className="mt-2 text-typography-500">Sign in to sync tasks across your devices.</Text>}
 
           <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
-            <VStack space="md">
+            <VStack space="sm">
               {todos.length ? (
                 sortedTodos.map((todo) => {
                 const isExpanded = Boolean(expandedMap[todo.id]);
-                const hstackClass = `flex-row items-center justify-between bg-background-50 ${isExpanded ? 'rounded-t-xl' : 'rounded-xl'} border border-border-200 px-4 py-3`;
+                const hstackClass = `flex-row items-center justify-between bg-background-50 ${isExpanded ? 'rounded-t-xl' : 'rounded-xl'}  border-border-200 px-4 py-3`;
 
                 return (
-                  <React.Fragment key={todo.id}>
+                  <VStack key={todo.id} space="0">
                     <HStack className={hstackClass}>
                       <Checkbox value={todo.id} isChecked={todo.completed} onChange={() => handleToggleTodo(todo)} className="flex-1">
                         <CheckboxIndicator>
@@ -327,8 +327,8 @@ const Main = () => {
                     </HStack>
 
                     {isExpanded && (
-                      <Box className="w-full bg-background-50 rounded-b-xl border border-border-200 border-t-0 px-4 py-3 pl-8 -mt-px">
-                        {(subtasksMap[todo.id] || []).length ? (
+                      <Box className="w-full bg-background-50 rounded-b-xl border-border-200 border-t-0 px-4 py-3 pl-8 -mt-px">
+                        {(
                           (subtasksMap[todo.id] || []).map((sub, idx, arr) => (
                             <React.Fragment key={sub.id}>
                               <HStack className="flex-row items-center justify-between w-full py-2">
@@ -346,9 +346,7 @@ const Main = () => {
                               {idx < (arr?.length ?? 0) - 1 && <Divider className="my-2 w-full" />}
                             </React.Fragment>
                           ))
-                        ) : (
-                          <Text className="text-typography-500">No subtasks</Text>
-                        )}
+                )}
 
                         {!todo.completed && (
                           <HStack space = 'sm'className="w-full mt-3">
@@ -362,7 +360,7 @@ const Main = () => {
                         )}
                       </Box>
                     )}
-                  </React.Fragment>
+                  </VStack>
                 );
               })
             ) : (
