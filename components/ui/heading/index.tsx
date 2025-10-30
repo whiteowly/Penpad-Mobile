@@ -61,7 +61,7 @@ const MappedHeading = memo(
         italic: italic as boolean,
         highlight: highlight as boolean,
         class: className,
-      });
+      } as any);
       // Do not merge font here; top-level `Heading` will pass the merged style down.
 
       switch (size) {
@@ -71,50 +71,45 @@ const MappedHeading = memo(
           return (
             <H1
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              // @ts-expect-error : type issue
-              ref={ref}
+              ref={ref as any}
             />
           );
         case '2xl':
           return (
             <H2
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              // @ts-expect-error : type issue
-              ref={ref}
+              ref={ref as any}
             />
           );
         case 'xl':
           return (
             <H3
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              // @ts-expect-error : type issue
-              ref={ref}
+              ref={ref as any}
             />
           );
         case 'lg':
           return (
             <H4
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              // @ts-expect-error : type issue
-              ref={ref}
+              ref={ref as any}
             />
           );
         case 'md':
           return (
             <H5
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              // @ts-expect-error : type issue
-              ref={ref}
+              ref={ref as any}
             />
           );
         case 'sm':
@@ -122,19 +117,18 @@ const MappedHeading = memo(
           return (
             <H6
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-              ref={ref}
+              ref={ref as any}
             />
           );
         default:
           return (
             <H4
               className={computedClassName}
-              style={style as StyleProp<TextStyle>}
+              style={style as any}
               {...restProps}
-            
-              ref={ref}
+              ref={ref as any}
             />
           );
       }
@@ -169,7 +163,7 @@ const Heading = memo(
       italic: italic as boolean,
       highlight: highlight as boolean,
       class: className,
-    });
+    } as any);
 
     
     const incomingStyle = style as StyleProp<TextStyle>;
@@ -182,7 +176,7 @@ const Heading = memo(
       return (
         <AsComp
           className={computedClassName}
-          style={mergedStyle}
+          style={mergedStyle as any}
           {...restProps}
         />
       );
@@ -199,8 +193,8 @@ const Heading = memo(
         sub={sub}
         italic={italic}
         highlight={highlight}
-        style={mergedStyle}
-        ref={ref}
+        style={mergedStyle as any}
+        ref={ref as any}
         {...restProps}
       />
     );

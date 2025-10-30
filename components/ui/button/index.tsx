@@ -335,7 +335,7 @@ const ButtonText = React.forwardRef<
           | 'negative'
           | undefined,
         class: className,
-      })}
+      } as any)}
     />
   );
 });
@@ -365,7 +365,7 @@ const ButtonIcon = React.forwardRef<
       <UIButton.Icon
         ref={ref}
         {...props}
-        className={buttonIconStyle({ class: className })}
+  className={buttonIconStyle({ class: className } as any)}
         size={size}
       />
     );
@@ -392,7 +392,7 @@ const ButtonIcon = React.forwardRef<
         },
         size,
         class: className,
-      })}
+      } as any)}
       ref={ref}
     />
   );
@@ -422,7 +422,7 @@ const ButtonGroup = React.forwardRef<
           space,
           isAttached: isAttached as boolean,
           flexDirection: flexDirection as any,
-        })}
+        } as any)}
         {...props}
         ref={ref}
       />

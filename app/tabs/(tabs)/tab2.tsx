@@ -278,7 +278,8 @@ export default function Tab2() {
                 const checkUsername = httpsCallable(functions, 'checkUsername');
                 const resp = await checkUsername({ username: trimmed });
                 if (!cancelled) {
-                  setUsernameAvailable(Boolean(resp?.data?.available));
+                  // response from callable may be untyped; narrow using 'any'
+                  setUsernameAvailable(Boolean((resp as any)?.data?.available));
                   setUsernameCheckError(null);
                 }
               } catch (fnErr) {

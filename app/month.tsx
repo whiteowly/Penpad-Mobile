@@ -96,7 +96,7 @@ const Main = () => {
         // left swipe -> next page (weekly)
         if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
           // cast to any to satisfy expo-router generated route union types
-          router.push('/weekly' as any);
+          
         }
         // right swipe -> go back (if sensible)
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
@@ -136,7 +136,39 @@ const Main = () => {
 
   const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
-  const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+  const { db, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+
+  // subscribe to per-user monthlyTodos collection (separate table from main todos)
+  useEffect(() => {
+    if (!activeUserId) {
+      setTodos([]);
+      return;
+    }
+
+    const col = collection(db, 'users', activeUserId, 'monthlyTodos');
+    const q = query(col, orderBy('createdAt', 'asc'));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: TodoItem[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            text: typeof data.text === 'string' ? data.text : '',
+            completed: Boolean(data.completed),
+            // keep reminder metadata if present
+            reminderAt: (data as any).reminderAt ?? null,
+            notificationId: (data as any).notificationId ?? null,
+          } as TodoItem;
+        });
+        setTodos(items);
+      },
+      (err) => handleLoadError(err, 'Could not load monthly tasks')
+    );
+
+    return () => unsub();
+  }, [db, activeUserId, handleLoadError]);
 
   const sortedTodos = useMemo(() => {
     return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
@@ -153,7 +185,7 @@ const Main = () => {
 
     try {
       setIsSaving(true);
-      const todoRef = await addDoc(collection(db, 'users', activeUserId, 'todos'), {
+      const todoRef = await addDoc(collection(db, 'users', activeUserId, 'monthlyTodos'), {
         text: trimmedValue,
         completed: false,
         createdAt: serverTimestamp(),
@@ -163,7 +195,7 @@ const Main = () => {
       for (const s of newSubtasks) {
         const t = s.trim();
         if (!t) continue;
-        await addDoc(collection(db, 'users', activeUserId, 'todos', todoRef.id, 'subtasks'), {
+        await addDoc(collection(db, 'users', activeUserId, 'monthlyTodos', todoRef.id, 'subtasks'), {
           text: t,
           completed: false,
           createdAt: serverTimestamp(),
@@ -196,7 +228,7 @@ const Main = () => {
     }
 
     try {
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+  const todoRef = doc(db, 'users', activeUserId, 'monthlyTodos', todo.id);
       const willComplete = !todo.completed;
 
       await updateDoc(todoRef, { completed: willComplete, updatedAt: serverTimestamp() });
@@ -224,7 +256,7 @@ const Main = () => {
 
     try {
       setDeletingId(todo.id);
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+  const todoRef = doc(db, 'users', activeUserId, 'monthlyTodos', todo.id);
       await deleteDoc(todoRef);
     } catch (error) {
       console.error('Failed to delete task', error);
@@ -243,7 +275,7 @@ const Main = () => {
 
     try {
       setDeletingId(subId);
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', subId);
+  const subRef = doc(db, 'users', activeUserId, 'monthlyTodos', todoId, 'subtasks', subId);
       await deleteDoc(subRef);
     } catch (error) {
       console.error('Failed to delete subtask', error);
@@ -271,7 +303,7 @@ const Main = () => {
     if (!activeUserId) return;
 
     // subscribe to subtasks for real-time updates
-    const subCol = collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks');
+  const subCol = collection(db, 'users', activeUserId, 'monthlyTodos', todoId, 'subtasks');
     const q = query(subCol, orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(
       q,
@@ -304,7 +336,7 @@ const Main = () => {
     const t = text.trim();
     if (!t) return;
     try {
-      await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
+      await addDoc(collection(db, 'users', activeUserId, 'monthlyTodos', todoId, 'subtasks'), {
         text: t,
         completed: false,
         createdAt: serverTimestamp(),
@@ -322,7 +354,7 @@ const Main = () => {
     }
 
     try {
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+  const subRef = doc(db, 'users', activeUserId, 'monthlyTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { completed: !sub.completed, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('Failed to update subtask', error);
@@ -348,7 +380,7 @@ const Main = () => {
     }
 
     try {
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+  const todoRef = doc(db, 'users', activeUserId, 'monthlyTodos', todo.id);
       await updateDoc(todoRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save todo edit', err);
@@ -377,7 +409,7 @@ const Main = () => {
     }
 
     try {
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+  const subRef = doc(db, 'users', activeUserId, 'monthlyTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save subtask edit', err);
@@ -484,11 +516,11 @@ const Main = () => {
             <Sidebar />
           </Box>
           <HStack space="xl" className="items-center justify-between flex-1 mb-2">
-            <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
-              Tasks
-            </Text>
-            <Text size="lg" className="text-typography-500">Today</Text>
-          </HStack>
+                     <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
+                       Tasks
+                     </Text>
+                     <Text size="lg" className="text-typography-500">This Month</Text>
+                   </HStack>
           <Box className="w-[56px]" />
         </Box>
 
@@ -497,7 +529,6 @@ const Main = () => {
         
 
         <Box className="mt-3">
-{/*           
           <Pressable className=" flex-row items-center justify-end rounded-md"
             onPress={() => setShowModal(true)}>
 
@@ -508,7 +539,7 @@ const Main = () => {
               className="text-typography-600"
 
             />
-          </Pressable> */}
+          </Pressable>
           {!isAuthenticated && <Text className="mt-2 text-typography-500">Sign in to sync tasks across your devices.</Text>}
 
           <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
@@ -621,7 +652,6 @@ const Main = () => {
               )}
             </VStack>
           </ScrollView>
-         
           {/* Modal-based datetime picker (avoids native dialog.dismiss issues on Android) */}
           <DateTimePickerModal
             isVisible={Boolean(pickerState)}
@@ -709,12 +739,10 @@ const Main = () => {
             </ModalFooter>
           </ModalContent>
         </Modal>
-
-        {/* Floating action button: fixed bottom-right */}
-        <Fab style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 50 }} size="xl" onPress={() => setShowModal(true)}>
-          <FabIcon as={AddIcon} />
-        </Fab>
-
+          {/* Floating action button (fixed bottom-right) - stays visible while scrolling */}
+          <Fab style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 50 }} onPress={() => setShowModal(true)} size="xl">
+            <FabIcon as={AddIcon} />
+          </Fab>
         </Box>
       </View>
     </SafeAreaView>
