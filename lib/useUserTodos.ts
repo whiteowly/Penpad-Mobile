@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { app, auth } from '../firebaseConfig';
 import {
   collection,
@@ -25,6 +25,8 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     auth.currentUser?.uid ?? null
   );
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [subtaskCounts, setSubtaskCounts] = useState<Record<string, number>>({});
+  const subUnsubsRef = useRef<Record<string, () => void>>({});
   const [summaryCounts, setSummaryCounts] = useState({
     totalCreated: 0,
     totalCompleted: 0,
@@ -108,11 +110,47 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     return unsubscribe;
   }, [db, activeUserId, handleError]);
 
-  const remainingCount = useMemo(
-    () => todos.filter((todo) => !todo.completed).length,
-    [todos]
-  );
-  const totalCount = summaryCounts.totalCreated;
+  // subscribe to subtasks counts for each todo so we can include them in totalCount
+  useEffect(() => {
+    // cleanup old listeners
+    Object.values(subUnsubsRef.current).forEach((unsub) => unsub && unsub());
+    subUnsubsRef.current = {};
+
+    if (!activeUserId || todos.length === 0) {
+      setSubtaskCounts({});
+      return;
+    }
+
+    todos.forEach((t) => {
+      const subsCol = collection(db, 'users', activeUserId, 'todos', t.id, 'subtasks');
+      const q = query(subsCol, orderBy('createdAt', 'asc'));
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          setSubtaskCounts((prev) => ({ ...prev, [t.id]: snap.size }));
+        },
+        (err) => handleError(err)
+      );
+      subUnsubsRef.current[t.id] = unsub;
+    });
+
+    return () => {
+      Object.values(subUnsubsRef.current).forEach((unsub) => unsub && unsub());
+      subUnsubsRef.current = {};
+    };
+  }, [db, activeUserId, todos, handleError]);
+
+  const remainingCount = useMemo(() => todos.filter((todo) => !todo.completed).length, [todos]);
+
+  const totalSubtasks = useMemo(() => {
+    return Object.values(subtaskCounts).reduce((s, v) => s + (v || 0), 0);
+  }, [subtaskCounts]);
+
+  const totalCount = useMemo(() => {
+    // include both top-level todos and subtasks in total count
+    return todos.length + totalSubtasks;
+  }, [todos.length, totalSubtasks]);
+
   const completedCount = summaryCounts.totalCompleted;
 
   return {

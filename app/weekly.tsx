@@ -38,6 +38,8 @@ import {
     addDoc,
     updateDoc,
     doc,
+    getDoc,
+    getDocs,
     serverTimestamp,
     deleteDoc,
     setDoc,
@@ -207,6 +209,14 @@ const Main = () => {
             try {
                 const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
                 await setDoc(statsRef, { totalCreated: increment(1) }, { merge: true });
+                // also increment monthly-created counter for the current month
+                try {
+                    const monthKey = getMonthKey(new Date());
+                    const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+                    await setDoc(monthStatsRef, { totalCreated: increment(1) }, { merge: true });
+                } catch (e) {
+                    console.error('Failed to update monthly created count', e);
+                }
             } catch (statsError) {
                 console.error('Failed to update created-task count', statsError);
             }
@@ -239,8 +249,25 @@ const Main = () => {
                 try {
                     const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
                     await setDoc(statsRef, { totalCompleted: increment(1) }, { merge: true });
+                    // update monthly completed counter
+                    try {
+                        const monthKey = getMonthKey(new Date());
+                        const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+                        await setDoc(monthStatsRef, { totalCompleted: increment(1) }, { merge: true });
+                    } catch (e) {
+                        console.error('Failed to update monthly completed count', e);
+                    }
                 } catch (statsError) {
                     console.error('Failed to update completed-task count', statsError);
+                }
+            } else {
+                // if the todo was un-completed, decrement monthly completed counter (best-effort)
+                try {
+                    const monthKey = getMonthKey(new Date());
+                    const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+                    await setDoc(monthStatsRef, { totalCompleted: increment(-1) }, { merge: true });
+                } catch (e) {
+                    // ignore errors here
                 }
             }
         } catch (error) {
@@ -434,6 +461,85 @@ const Main = () => {
             return null;
         }
     };
+
+    const sendImmediateNotification = async (title: string, body: string) => {
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: { title, body },
+                trigger: null as any,
+            });
+        } catch (err) {
+            console.error('Failed to send notification', err);
+        }
+    };
+
+    const getMonthKey = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}`;
+    };
+
+    // Month-boundary check for weeklyTodos: clear weeklyTodos at month boundary and notify
+    useEffect(() => {
+        if (!activeUserId) return;
+
+        const runResetCheck = async () => {
+            try {
+                const now = new Date();
+                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const prevMonthKey = getMonthKey(prev);
+                const prevPrev = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+                const prevPrevMonthKey = getMonthKey(prevPrev);
+
+                const metaRef = doc(db, 'users', activeUserId, 'stats', 'monthlyMeta');
+                const metaSnap = await getDoc(metaRef);
+                const lastProcessed = metaSnap.exists() ? (metaSnap.data() as any).lastProcessedMonth : null;
+                if (lastProcessed === prevMonthKey) return;
+
+                const prevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevMonthKey);
+                const prevStatsSnap = await getDoc(prevStatsRef);
+                const prevStats = prevStatsSnap.exists() ? (prevStatsSnap.data() as any) : { totalCompleted: 0 };
+
+                const prevPrevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevPrevMonthKey);
+                const prevPrevStatsSnap = await getDoc(prevPrevStatsRef);
+                const prevPrevStats = prevPrevStatsSnap.exists() ? (prevPrevStatsSnap.data() as any) : { totalCompleted: 0 };
+
+                const completedThis = Number(prevStats.totalCompleted || 0);
+                const completedBefore = Number(prevPrevStats.totalCompleted || 0);
+                const delta = completedThis - completedBefore;
+
+                let msg = '';
+                if (delta > 0) msg = `You completed ${delta} more tasks than the previous month.`;
+                else if (delta < 0) msg = `You completed ${Math.abs(delta)} fewer tasks than the previous month.`;
+                else msg = `You completed the same number of tasks as the month before.`;
+
+                // delete weeklyTodos and their subtasks
+                const todosCol = collection(db, 'users', activeUserId, 'weeklyTodos');
+                const todosSnap = await getDocs(todosCol);
+                const deletes: Promise<any>[] = [];
+                for (const td of todosSnap.docs) {
+                    const subsCol = collection(db, 'users', activeUserId, 'weeklyTodos', td.id, 'subtasks');
+                    const subsSnap = await getDocs(subsCol);
+                    for (const s of subsSnap.docs) {
+                        deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'weeklyTodos', td.id, 'subtasks', s.id)));
+                    }
+                    deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'weeklyTodos', td.id)));
+                }
+                await Promise.all(deletes);
+
+                await setDoc(metaRef, { lastProcessedMonth: prevMonthKey }, { merge: true });
+
+                // reset the global summary completed count so Profile/computed completedCount restarts
+                await setDoc(doc(db, 'users', activeUserId, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
+
+                await sendImmediateNotification('Monthly Summary', msg);
+            } catch (err) {
+                console.error('Weekly month reset failed', err);
+            }
+        };
+
+        runResetCheck();
+    }, [activeUserId, db]);
 
     const cancelNotification = async (identifier: string | null | undefined) => {
         if (!identifier) return;

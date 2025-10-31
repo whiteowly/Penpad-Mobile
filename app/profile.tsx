@@ -8,7 +8,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
-
+import { PieChart } from 'react-native-svg-charts';
 import { Box } from '@/components/ui/box';
 import { Heading } from '@/components/ui/heading';
 import { Text } from '@/components/ui/text';
@@ -28,6 +28,7 @@ import { useRouter } from 'expo-router';
 import { Pressable } from '@/components/ui/pressable';
 import { LockIcon, LogOutIcon } from 'lucide-react-native';
 import { Footer } from '@expo/html-elements';
+import { View } from 'react-native';
 import { ArrowLeftIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icon';
 import {Input, InputField, InputIcon, InputSlot} from '@/components/ui/input';
 import { signOut } from 'firebase/auth';
@@ -379,12 +380,6 @@ const Profile = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
-
-            {/* <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
-            onPress={() => {router.push('/tasks'); }}>
-              <Icon as={RepeatIcon} size="lg" className="text-typography-600" />
-              <Text size="lg">Update Email Address</Text>
-            </Pressable> */}
             <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
              onPress={() => {
               setDeletePassword('');
@@ -474,9 +469,34 @@ const Profile = () => {
                  </Text>
             <Divider className="my-[10px] w-[100%]" />
             <Text size="lg">Join Date: {joinDate} </Text>
-            <Text size="lg">Total Tasks Created: {totalCount}</Text>
-            <Text size="lg">Completed Tasks: {completedCount}</Text>
-            <Text size="lg">Active Tasks: {remainingCount}</Text>
+
+            {/* Pie chart: completed vs remaining. totalCount is shown as label */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+              <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}>
+                <PieChart
+                  style={{ height: 160, width: 160 }}
+                  data={[
+                    { key: 'completed', value: Number(completedCount) || 0, svg: { fill: '#34D399' } },
+                    { key: 'remaining', value: Number(remainingCount) || 0, svg: { fill: '#F59E0B' } },
+                  ]}
+                />
+                <View style={{ position: 'absolute', alignItems: 'center' }}>
+                  <Text size="lg">Total</Text>
+                  <Text size="xl" style={{ fontFamily: 'Poppins_600SemiBold' }}>{totalCount}</Text>
+                </View>
+              </View>
+
+              <View style={{ marginLeft: 16 }}>
+                <HStack className="items-center mb-2">
+                  <View style={{ width: 12, height: 12, backgroundColor: '#34D399', borderRadius: 3, marginRight: 8 }} />
+                  <Text>Completed: {completedCount}</Text>
+                </HStack>
+                <HStack className="items-center">
+                  <View style={{ width: 12, height: 12, backgroundColor: '#F59E0B', borderRadius: 3, marginRight: 8 }} />
+                  <Text>Active: {remainingCount}</Text>
+                </HStack>
+              </View>
+            </View>
         </Box>
         <Footer
           style={{ width: '100%' }}
