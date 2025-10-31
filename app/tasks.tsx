@@ -711,12 +711,13 @@ const Main = () => {
                               <Input variant="rounded" size="md" className="flex-1">
                                 <InputField placeholder="Add subtask..." value={subtaskInputs[todo.id] ?? ''} onChangeText={(v) => setSubtaskInputs((p) => ({ ...p, [todo.id]: v }))} />
                               </Input>
-                              <Pressable className="ml-3 rounded-full p-2" onPress={() => setPickerState({ type: 'subtask', todoId: todo.id, subId: sub.id, initialDate: (sub as any).reminderAt ? new Date((sub as any).reminderAt) : new Date() })} accessibilityLabel="Set subtask reminder">
-                                    <Icon as={ClockIcon} size="sm" className={`${(sub as any).reminderAt ? 'text-success-600' : 'text-typography-600'}`} />
-                                  </Pressable>
+                              
                               <Button size="md" className="bg-primary-500 px-6 py-2 rounded-full" onPress={() => { handleAddSubtask(todo.id, subtaskInputs[todo.id] ?? ''); setSubtaskInputs((p) => ({ ...p, [todo.id]: '' })); }}>
                                 <ButtonText>Add</ButtonText>
                               </Button>
+                              <Pressable className="ml-3 rounded-full p-2" onPress={() => setPickerState({ type: 'subtask', todoId: todo.id, subId: sub.id, initialDate: (sub as any).reminderAt ? new Date((sub as any).reminderAt) : new Date() })} accessibilityLabel="Set subtask reminder">
+                                    <Icon as={ClockIcon} size="sm" className={`${(sub as any).reminderAt ? 'text-success-600' : 'text-typography-600'}`} />
+                                  </Pressable>
                             </HStack>
                           )}
                         </Box>
