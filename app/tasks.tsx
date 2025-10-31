@@ -323,22 +323,24 @@ const Main = () => {
     subUnsubs.current[todoId] = unsub;
   };
 
-  const handleAddSubtask = async (todoId: string, text: string) => {
+  const handleAddSubtask = async (todoId: string, text: string): Promise<string | null> => {
     if (!activeUserId) {
       alert('Sign in to add subtasks');
-      return;
+      return null;
     }
     const t = text.trim();
-    if (!t) return;
+    if (!t) return null;
     try {
-      await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
+      const ref = await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
         text: t,
         completed: false,
         createdAt: serverTimestamp(),
       });
+      return ref.id;
     } catch (error) {
       console.error('Failed to add subtask', error);
       alert('Could not add subtask');
+      return null;
     }
   };
 
@@ -711,13 +713,37 @@ const Main = () => {
                               <Input variant="rounded" size="md" className="flex-1">
                                 <InputField placeholder="Add subtask..." value={subtaskInputs[todo.id] ?? ''} onChangeText={(v) => setSubtaskInputs((p) => ({ ...p, [todo.id]: v }))} />
                               </Input>
-                              
-                              <Button size="md" className="bg-primary-500 px-6 py-2 rounded-full" onPress={() => { handleAddSubtask(todo.id, subtaskInputs[todo.id] ?? ''); setSubtaskInputs((p) => ({ ...p, [todo.id]: '' })); }}>
+
+                              <Pressable className="ml-3 rounded-full p-2" onPress={async () => {
+                                const text = subtaskInputs[todo.id] ?? '';
+                                if (!text.trim()) {
+                                  // ensure user entered text before opening reminder flow
+                                  alert('Enter a subtask first');
+                                  return;
+                                }
+                                const newId = await handleAddSubtask(todo.id, text);
+                                setSubtaskInputs((p) => ({ ...p, [todo.id]: '' }));
+                                if (newId) {
+                                  setPickerState({ type: 'subtask', todoId: todo.id, subId: newId, initialDate: new Date(), initialSubText: text });
+                                }
+                              }} accessibilityLabel="Set subtask reminder">
+                                <Icon as={ClockIcon} size="sm" className="text-typography-600" />
+                              </Pressable>
+
+                              <Button size="md" className="bg-primary-500 px-6 py-2 rounded-full" onPress={async () => {
+                                const text = subtaskInputs[todo.id] ?? '';
+                                const newId = await handleAddSubtask(todo.id, text);
+                                setSubtaskInputs((p) => ({ ...p, [todo.id]: '' }));
+                                if (newId) {
+                                  // open date picker so the user can set a reminder for the newly created subtask
+                                  setPickerState({ type: 'subtask', todoId: todo.id, subId: newId, initialDate: new Date(), initialSubText: text });
+                                }
+                              }}>
                                 <ButtonText>Add</ButtonText>
                               </Button>
-                              <Pressable className="ml-3 rounded-full p-2" onPress={() => setPickerState({ type: 'subtask', todoId: todo.id, subId: sub.id, initialDate: (sub as any).reminderAt ? new Date((sub as any).reminderAt) : new Date() })} accessibilityLabel="Set subtask reminder">
-                                    <Icon as={ClockIcon} size="sm" className={`${(sub as any).reminderAt ? 'text-success-600' : 'text-typography-600'}`} />
-                                  </Pressable>
+
+                              {/* We removed the inline reminder button that referenced `sub` (undefined in this scope).
+                                  Instead we open the picker after creating the subtask so the user can choose a reminder. */}
                             </HStack>
                           )}
                         </Box>
@@ -746,7 +772,19 @@ const Main = () => {
               } else {
                 const subList = subtasksMap[ps.todoId] || [];
                 const sub = subList.find((s) => s.id === ps.subId);
-                if (sub) await handleSetSubtaskReminder(ps.todoId, sub, date);
+                if (sub) {
+                  await handleSetSubtaskReminder(ps.todoId, sub, date);
+                } else if ((ps as any).initialSubText) {
+                  // If the realtime listener hasn't arrived yet, construct a temporary subtask object
+                  const tempSub: SubtaskItem = {
+                    id: ps.subId,
+                    text: (ps as any).initialSubText,
+                    completed: false,
+                    reminderAt: null,
+                    notificationId: null,
+                  };
+                  await handleSetSubtaskReminder(ps.todoId, tempSub, date);
+                }
               }
             }}
             onCancel={() => setPickerState(null)}

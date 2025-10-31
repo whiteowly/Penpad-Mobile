@@ -14,6 +14,8 @@ export type TodoItem = {
   id: string;
   text: string;
   completed: boolean;
+  createdAt?: any;
+  updatedAt?: any;
 };
 
 type UseUserTodosOptions = {
@@ -25,7 +27,8 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     auth.currentUser?.uid ?? null
   );
   const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [subtaskCounts, setSubtaskCounts] = useState<Record<string, number>>({});
+  // per-todo subtask stats: total and incomplete counts
+  const [subtaskStats, setSubtaskStats] = useState<Record<string, { total: number; incomplete: number }>>({});
   const subUnsubsRef = useRef<Record<string, () => void>>({});
   const [summaryCounts, setSummaryCounts] = useState({
     totalCreated: 0,
@@ -71,6 +74,8 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
           id: document.id,
           text: typeof data.text === 'string' ? data.text : '',
           completed: Boolean(data.completed),
+          createdAt: (data as any).createdAt ?? null,
+          updatedAt: (data as any).updatedAt ?? null,
         };
       });
 
@@ -117,7 +122,7 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     subUnsubsRef.current = {};
 
     if (!activeUserId || todos.length === 0) {
-      setSubtaskCounts({});
+      setSubtaskStats({});
       return;
     }
 
@@ -127,7 +132,16 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
       const unsub = onSnapshot(
         q,
         (snap) => {
-          setSubtaskCounts((prev) => ({ ...prev, [t.id]: snap.size }));
+          try {
+            const total = snap.size;
+            const incomplete = snap.docs.reduce((acc, d) => {
+              const data = d.data();
+              return acc + (data && data.completed ? 0 : 1);
+            }, 0);
+            setSubtaskStats((prev) => ({ ...prev, [t.id]: { total, incomplete } }));
+          } catch (err) {
+            handleError(err);
+          }
         },
         (err) => handleError(err)
       );
@@ -140,22 +154,61 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     };
   }, [db, activeUserId, todos, handleError]);
 
-  const remainingCount = useMemo(() => todos.filter((todo) => !todo.completed).length, [todos]);
-
   const totalSubtasks = useMemo(() => {
-    return Object.values(subtaskCounts).reduce((s, v) => s + (v || 0), 0);
-  }, [subtaskCounts]);
+    // sum total subtasks from per-todo stats
+    return Object.values(subtaskStats).reduce((s, v) => s + (v?.total || 0), 0);
+  }, [subtaskStats]);
+
+  const incompleteSubtasks = useMemo(() => {
+    return Object.values(subtaskStats).reduce((s, v) => s + (v?.incomplete || 0), 0);
+  }, [subtaskStats]);
+
+  const remainingCount = useMemo(() => {
+    // include top-level incomplete todos plus incomplete subtasks
+    const topLevelIncomplete = todos.filter((todo) => !todo.completed).length;
+    return topLevelIncomplete + incompleteSubtasks;
+  }, [todos, incompleteSubtasks]);
 
   const totalCount = useMemo(() => {
     // include both top-level todos and subtasks in total count
     return todos.length + totalSubtasks;
   }, [todos.length, totalSubtasks]);
 
-  const completedCount = summaryCounts.totalCompleted;
+  // completedCount: count of todos completed today (top-level only)
+  const completedCount = useMemo(() => {
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+
+      const inRange = (ts: any) => {
+        if (!ts) return false;
+        // Firestore Timestamp has toDate or toMillis
+        let d: Date | null = null;
+        if (typeof ts.toDate === 'function') d = ts.toDate();
+        else if (typeof ts.toMillis === 'function') d = new Date(ts.toMillis());
+        else d = ts instanceof Date ? ts : new Date(ts);
+        if (!d || Number.isNaN(d.getTime())) return false;
+        return d >= start && d <= end;
+      };
+
+      return todos.filter((t) => {
+        if (!t.completed) return false;
+        // prefer updatedAt, fallback to createdAt
+        const ts = (t.updatedAt ?? t.createdAt) as any;
+        return inRange(ts);
+      }).length;
+    } catch (err) {
+      console.error('Failed to compute completedCount for today', err);
+      return summaryCounts.totalCompleted || 0;
+    }
+  }, [todos, summaryCounts.totalCompleted]);
 
   return {
     db,
     todos,
+    subtaskStats,
     remainingCount,
     totalCount,
     completedCount,

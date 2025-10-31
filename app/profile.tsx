@@ -468,7 +468,7 @@ const Profile = () => {
                     Usage Statistics
                  </Text>
             <Divider className="my-[10px] w-[100%]" />
-            <Text size="lg">Join Date: {joinDate} </Text>
+            
 
             {/* Pie chart: completed vs remaining. totalCount is shown as label */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
@@ -476,8 +476,8 @@ const Profile = () => {
                 <PieChart
                   style={{ height: 160, width: 160 }}
                   data={[
-                    { key: 'completed', value: Number(completedCount) || 0, svg: { fill: '#34D399' } },
-                    { key: 'remaining', value: Number(remainingCount) || 0, svg: { fill: '#F59E0B' } },
+                    { key: 'completed', value: Number(completedCount) || 0, svg: { fill: '#868585' } },
+                    { key: 'remaining', value: Number(remainingCount) || 0, svg: { fill: '#4d4d4d' } },
                   ]}
                 />
                 <View style={{ position: 'absolute', alignItems: 'center' }}>
@@ -488,15 +488,16 @@ const Profile = () => {
 
               <View style={{ marginLeft: 16 }}>
                 <HStack className="items-center mb-2">
-                  <View style={{ width: 12, height: 12, backgroundColor: '#34D399', borderRadius: 3, marginRight: 8 }} />
+                  <View style={{ width: 12, height: 12, backgroundColor: '#868585', borderRadius: 3, marginRight: 8 }} />
                   <Text>Completed: {completedCount}</Text>
                 </HStack>
                 <HStack className="items-center">
-                  <View style={{ width: 12, height: 12, backgroundColor: '#F59E0B', borderRadius: 3, marginRight: 8 }} />
+                  <View style={{ width: 12, height: 12, backgroundColor: '#4d4d4d', borderRadius: 3, marginRight: 8 }} />
                   <Text>Active: {remainingCount}</Text>
                 </HStack>
               </View>
             </View>
+           
         </Box>
         <Footer
           style={{ width: '100%' }}
