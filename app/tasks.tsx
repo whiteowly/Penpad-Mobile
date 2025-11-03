@@ -603,7 +603,7 @@ const Main = () => {
             <Sidebar />
           </Box>
           <HStack space="xl" className="items-center justify-between flex-1 mb-2">
-            <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
+            <Text className="text-xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
               Tasks
             </Text>
             <Text size="lg" className="text-typography-500">Today</Text>

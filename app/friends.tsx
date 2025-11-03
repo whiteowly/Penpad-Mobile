@@ -14,7 +14,6 @@ import { Divider } from '@/components/ui/divider';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Input, InputField } from '@/components/ui/input';
 import { Pressable } from '@/components/ui/pressable';
-import { ScrollView } from 'react-native-reanimated/lib/typescript/Animated';
 import { app, auth } from '../firebaseConfig';
 import {
   getFirestore,
@@ -36,6 +35,8 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from '@/components/ui/avatar';
+import { ScrollView } from 'react-native';
+import { VStack } from '@/components/ui/vstack';
 
 type FriendDoc = { uid: string; displayName?: string; username?: string; createdAt?: any };
 
@@ -109,9 +110,16 @@ const Main = () => {
     if (!uid) return;
     try {
       const requestRef = doc(db, 'users', targetUid, 'friendRequests', uid);
+      const sentRef = doc(db, 'users', uid, 'sentRequests', targetUid);
       await setDoc(requestRef, {
         fromUid: uid,
         fromDisplayName: auth.currentUser?.displayName ?? auth.currentUser?.email ?? null,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(sentRef, {
+        fromUid: uid,
+        toUid: targetUid,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
@@ -157,13 +165,13 @@ const Main = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
-      <Box className="flex-1 px-6" style={{ backgroundColor }}>
+      <Box className="flex-1 px-3" style={{ backgroundColor }}>
         <Box className="flex-row items-center mb-4">
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
           <Text
-            className="text-3xl text-bold"
+            className="text-xl text-bold"
             style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
           >
             Friends
@@ -172,30 +180,30 @@ const Main = () => {
         </Box>
 
         <Divider className="my-[1px] w-full" />
-        <Box className="myt-3">
+       
 
-        </Box>
-
-        <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
+        <ScrollView className="mt-3" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
           <Box>  {friends.length === 0 ? (
             <Box className="items-center justify-center flex-0">
               <Text className="text-muted">You have no friends yet</Text>
             </Box>
           ) : (
             friends.map((f) => (
-              <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-2 py-3">
-                <Text>{f.displayName ?? f.username ?? f.uid}</Text>
-                {/* <Button onPress={() => removeFriend(f.uid)}>
-                  <ButtonText>Remove</ButtonText>
-                </Button> */}
-                <Avatar size="2xl">
+              <VStack key={f.uid} className="mb-1">
+              <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
+                <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
+                
+                <Avatar size="md">
                   {resolvedAvatar ? (
                     <AvatarImage source={{ uri: resolvedAvatar }} alt="Profile avatar" />
                   ) : (
                     <AvatarFallbackText>{f.displayName}</AvatarFallbackText>
                   )}
                 </Avatar>
+                
               </HStack>
+      
+              </VStack>
             ))
           )}</Box>
         </ScrollView>

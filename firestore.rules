@@ -60,6 +60,25 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Outgoing (sent) requests stored under: users/{userId}/sentRequests/{targetUid}
+    match /users/{userId}/sentRequests/{targetUid} {
+      // Only the owner may list/get their own sent requests
+      allow get, list: if request.auth != null && request.auth.uid == userId;
+
+      // Creation only allowed by the owner (sender)
+      allow create: if request.auth != null
+                     && request.auth.uid == request.resource.data.fromUid
+                     && request.resource.data.fromUid == request.auth.uid
+                     && request.resource.data.toUid == targetUid
+                     && request.resource.data.status == 'pending'
+                     && request.resource.data.createdAt is timestamp;
+
+      // Deletion only by the owner (sender)
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      allow update: if false;
+    }
+
     // Default: deny everything else. Be explicit about collection rules as
     // your app grows instead of opening up a permissive catch-all.
     match /{document=**} {

@@ -30,7 +30,7 @@ import { useRouter } from 'expo-router';
 
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../firebaseConfig';
-import { HStack } from '@/components/ui/hstack/index.web';
+import { HStack } from '@/components/ui/hstack';
 
 
 function Sidebar() {

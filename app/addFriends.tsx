@@ -7,7 +7,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Fab, FabIcon } from '@/components/ui/fab';
-import { AddIcon, CheckIcon, SearchIcon, ShareIcon, ArrowLeftIcon, TrashIcon } from '@/components/ui/icon';
+import { AddIcon, CheckIcon, SearchIcon, ShareIcon, ArrowLeftIcon, TrashIcon, CloseIcon } from '@/components/ui/icon';
 import { router } from 'expo-router';
 import Sidebar from './sidebar';
 import { Divider } from '@/components/ui/divider';
@@ -32,6 +32,8 @@ import {
 } from 'firebase/firestore';
 import { normalizeUsername } from '@/lib/usernames';
 import { useEffect, useMemo, useState } from 'react';
+import { HStack } from '@/components/ui/hstack';
+import { VStack } from '@/components/ui/vstack';
 
 type FriendDoc = { uid: string; displayName?: string; username?: string; createdAt?: any };
 
@@ -48,6 +50,7 @@ const Main = () => {
   const [emailSearchText, setEmailSearchText] = useState('');
   const [emailSearchResult, setEmailSearchResult] = useState<{ uid: string; email?: string; username?: string } | null>(null);
   const [isEmailSearching, setIsEmailSearching] = useState(false);
+  const [emailSearchTried, setEmailSearchTried] = useState(false);
 
   const [incomingRequests, setIncomingRequests] = useState<Array<any>>([]);
   const [friends, setFriends] = useState<FriendDoc[]>([]);
@@ -105,6 +108,7 @@ const Main = () => {
   const handleEmailSearch = async () => {
     setIsEmailSearching(true);
     setEmailSearchResult(null);
+    setEmailSearchTried(false);
     try {
       const trimmed = (emailSearchText || '').trim().toLowerCase();
       if (!trimmed) {
@@ -127,9 +131,12 @@ const Main = () => {
           setEmailSearchResult(null);
         }
       }
+      // mark that a search attempt completed
+      setEmailSearchTried(true);
     } catch (err) {
       console.error('Email search failed', err);
       setEmailSearchResult(null);
+      setEmailSearchTried(true);
     } finally {
       setIsEmailSearching(false);
     }
@@ -139,14 +146,87 @@ const Main = () => {
     if (!uid) return;
     try {
       const requestRef = doc(db, 'users', targetUid, 'friendRequests', uid);
+      const sentRef = doc(db, 'users', uid, 'sentRequests', targetUid);
+      // write both recipient's incoming request and our outgoing record
       await setDoc(requestRef, {
         fromUid: uid,
         fromDisplayName: auth.currentUser?.displayName ?? auth.currentUser?.email ?? null,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
+      await setDoc(sentRef, {
+        fromUid: uid,
+        toUid: targetUid,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      // clear the email search input/result after sending a request
+      setEmailSearchText('');
+      setEmailSearchResult(null);
     } catch (err) {
       console.error('Failed to send friend request', err);
+    }
+  };
+
+  // listen to outgoing (pending) requests sent by current user
+  const [pendingRequests, setPendingRequests] = useState<Array<any>>([]);
+  const [pendingMeta, setPendingMeta] = useState<Record<string, { username?: string; displayName?: string; email?: string }>>({});
+  useEffect(() => {
+    if (!uid) return;
+    const q = query(collection(db, 'users', uid, 'sentRequests'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setPendingRequests(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    });
+    return () => unsub();
+  }, [db, uid]);
+
+  // Resolve metadata (username/displayName/email) for pending targets
+  useEffect(() => {
+    let isMounted = true;
+    const uids = Array.from(new Set(pendingRequests.map((p) => p.toUid).filter(Boolean)));
+    const missing = uids.filter((id) => !pendingMeta[id]);
+    if (missing.length === 0) return;
+    (async () => {
+      try {
+        const entries: Array<[string, any]> = [];
+        await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const snap = await getDoc(doc(db, 'users', id));
+              if (snap.exists()) {
+                const d = snap.data() as any;
+                entries.push([id, { username: d?.username, displayName: d?.displayName, email: d?.email }]);
+              } else {
+                entries.push([id, {}]);
+              }
+            } catch (err) {
+              console.error('Failed to fetch user meta for pending request', id, err);
+              entries.push([id, {}]);
+            }
+          })
+        );
+        if (!isMounted) return;
+        setPendingMeta((prev) => {
+          const copy = { ...prev };
+          for (const [id, meta] of entries) copy[id] = meta;
+          return copy;
+        });
+      } catch (err) {
+        console.error('Failed to resolve pending request metas', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [pendingRequests]);
+
+  const cancelSentRequest = async (targetUid: string) => {
+    if (!uid) return;
+    try {
+      await deleteDoc(doc(db, 'users', uid, 'sentRequests', targetUid));
+      await deleteDoc(doc(db, 'users', targetUid, 'friendRequests', uid));
+    } catch (err) {
+      console.error('Failed to cancel sent request', err);
     }
   };
 
@@ -187,47 +267,93 @@ const Main = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
-      <Box className="flex-1 px-6" style={{ backgroundColor }}>
+      <Box className="flex-1 px-3" style={{ backgroundColor }}>
         <Box className="flex-row items-center mb-4">
           <Box className="items-start w-[56px]">
             <Button
-              size="xl"
+              size="lg"
               variant='link'
               onPress={() => { router.back(); }}>
               <ButtonIcon as={ArrowLeftIcon} />
             </Button>
           </Box>
           <Text
-            className="text-3xl text-bold"
+            className="text-xl text-bold"
             style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
           >
-            New
+            Add Friends
           </Text>
           <Box className="w-[56px]" />
         </Box>
-        <Divider className="my-4 w-full" />
+        <Divider className="my-0 w-full" />
 
-        <Box className="mt-4">
-          <Text size="lg" className="mb-2">Find a friend by email</Text>
-          <Box className="flex-0 items-center gap-2">
-            <Input variant="rounded" size="md">
+        <Box className="mt-2">
+        <Box>
+          <Text size="md" className="mb-2">Incoming Requests</Text>
+          {incomingRequests.length === 0 ? (
+            <Text size="sm">None</Text>
+          ) : (
+            incomingRequests.map((r) => (
+                <VStack key={r.id} className="mb-1">
+                <HStack key={r.id} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
+                <Text size="md">{r.fromDisplayName ?? r.fromUid}</Text>
+                 <Box className="flex-row gap-2">
+                  <Button className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => acceptRequest(r.id, r.fromUid, r.fromDisplayName)}>
+                    <ButtonIcon as={CheckIcon} />
+                  </Button>
+                  <Button className="bg-secondary-500 px-6 py-2 rounded-full bg-red-500" onPress={() => rejectRequest(r.id)}>
+                    <ButtonIcon as={CloseIcon} />
+                  </Button>
+                </Box>
+              </HStack>
+            </VStack>
+            ))
+          )}
+        </Box>
+          <Divider className="my-4 w-full" />
+        <Box>
+          <Text size="md" className="mb-2">Pending Requests (sent)</Text>
+          {pendingRequests.length === 0 ? (
+            <Text size = "sm">None</Text>
+          ) : (
+            pendingRequests.map((p) => (
+                <VStack key={p.id} space ="sm">
+                  <HStack className="flex-row items-center justify-between bg-background-50 rounded-xl px-4 py-3 my-2">
+                <Text size="lg">{(pendingMeta[p.toUid]?.username ? `${pendingMeta[p.toUid].username}` : (pendingMeta[p.toUid]?.displayName ?? pendingMeta[p.toUid]?.email ?? p.toUid))}</Text>
+                <Box className="flex-row gap-2">
+                  <Button className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => cancelSentRequest(p.id)}>
+                    <ButtonText>Cancel</ButtonText>
+                  </Button>
+                </Box>
+              </HStack>
+              </VStack>
+            ))
+          )}
+        </Box>
+         <Divider className="my-4 w-full" />
+      
+         <Box className="flex-0 items-start gap-2">
+            <Text size="md" className="mb-2">Search by Email</Text>
+            <HStack className="flex-row items-center gap-2">
+            <Input variant="rounded" size="md" className="flex-1">
               <InputField
                 placeholder="email@example.com"
                 value={emailSearchText}
-                onChangeText={setEmailSearchText}
+                onChangeText={(v) => { setEmailSearchText(v); setEmailSearchResult(null); setEmailSearchTried(false); }}
                 autoCapitalize="none"
               />
             </Input>
-            <Button onPress={handleEmailSearch}>
-              <ButtonText>{isEmailSearching ? '...' : 'Search'}</ButtonText>
+            <Button className="bg-secondary-500 px-6 py-2 rounded-full" size="lg" onPress={handleEmailSearch}>
+              <ButtonIcon as={SearchIcon} />
             </Button>
+            </HStack> 
+           
           </Box>
-
-          <Box className="mt-3">
+          <Box className="mt-4">
             {emailSearchResult ? (
               <Box className="flex-row items-center justify-between">
-                <Text>{emailSearchResult.username ? `@${emailSearchResult.username}` : emailSearchResult.email}</Text>
-                <Button onPress={() => sendFriendRequest(emailSearchResult.uid)}>
+                <Text size = "lg">{emailSearchResult.username ? `${emailSearchResult.username}` : emailSearchResult.email}</Text>
+                <Button variant= "outline" className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => sendFriendRequest(emailSearchResult.uid)}>
                   <ButtonText>Send Request</ButtonText>
                 </Button>
               </Box>
@@ -236,35 +362,6 @@ const Main = () => {
             )}
           </Box>
         </Box>
-
-        <Divider className="my-4 w-full" />
-
-        <Box>
-          <Text size="lg" className="mb-2">Incoming Requests</Text>
-          {incomingRequests.length === 0 ? (
-            <Text className="text-muted">No incoming requests</Text>
-          ) : (
-            incomingRequests.map((r) => (
-              <Box key={r.id} className="flex-row items-center justify-between py-2">
-                <Text>@{r.fromDisplayName ?? r.fromUid}</Text>
-                <Box className="flex-row gap-2">
-                  <Button onPress={() => acceptRequest(r.id, r.fromUid, r.fromDisplayName)}>
-                    <ButtonText>Accept</ButtonText>
-                  </Button>
-                  <Button onPress={() => rejectRequest(r.id)}>
-                    <ButtonText>Reject</ButtonText>
-                  </Button>
-                </Box>
-              </Box>
-            ))
-          )}
-        </Box>
-
-        <Divider className="my-4 w-full" />
-
-       
-
-        
       </Box>
     </SafeAreaView>
   );
