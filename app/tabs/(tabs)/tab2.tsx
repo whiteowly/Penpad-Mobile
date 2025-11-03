@@ -212,7 +212,7 @@ export default function Tab2() {
 
       setStatusVariant('success');
       setStatusMessage('Account created successfully. Redirecting...');
-      router.replace('/tasks'); // or '/main' if you want to auto-login
+      router.replace('/generalTasks'); // or '/main' if you want to auto-login
     } catch (error) {
       console.error('Sign up error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';

@@ -110,7 +110,7 @@ function Sidebar() {
               <Text>Tasks</Text>
             </Pressable>
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-             onPress={() => {router.push('/reminder'); setShowDrawer(false);}}>
+             onPress={() => {router.push('/friends'); setShowDrawer(false);}}>
               <Icon
                 as={ClockIcon}
                 size="lg"

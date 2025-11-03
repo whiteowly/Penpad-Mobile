@@ -36,11 +36,9 @@ import { CheckIcon } from '@/components/ui/icon';
 const Main = () => {
   const colorScheme = useColorScheme();
   const backgroundColor = Colors[colorScheme].background;
-  const router = useRouter();
+
   const [showModal, setShowModal] = React.useState(false);
-  const [showModal2, setShowModal2] = React.useState(false);
-  const [showModal3, setShowModal3] = React.useState(false);
-   const [values, setValues] = React.useState(['']);
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>

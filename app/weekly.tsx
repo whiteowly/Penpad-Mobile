@@ -484,12 +484,22 @@ const Main = () => {
         if (!activeUserId) return;
 
         const runResetCheck = async () => {
-            try {
-                const now = new Date();
-                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                const prevMonthKey = getMonthKey(prev);
-                const prevPrev = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-                const prevPrevMonthKey = getMonthKey(prevPrev);
+                try {
+                    const now = new Date();
+
+                    // Only run reset on month boundary (last day: 30th/31st, or the 1st)
+                    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                    let finalizeMonthStart: Date | null = null;
+                    if (now.getDate() === 1) {
+                        finalizeMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    } else if (now.getDate() === lastDayOfMonth) {
+                        finalizeMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                    } else {
+                        return;
+                    }
+
+                    const prevMonthKey = getMonthKey(finalizeMonthStart);
+                    const prevPrevMonthKey = getMonthKey(new Date(finalizeMonthStart.getFullYear(), finalizeMonthStart.getMonth() - 1, 1));
 
                 const metaRef = doc(db, 'users', activeUserId, 'stats', 'monthlyMeta');
                 const metaSnap = await getDoc(metaRef);

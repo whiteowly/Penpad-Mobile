@@ -98,7 +98,7 @@ const Main = () => {
         // left swipe -> next page (weekly)
         if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
           // cast to any to satisfy expo-router generated route union types
-          
+          router.push('/generalTasks' as any);
         }
         // right swipe -> go back (if sensible)
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
@@ -478,90 +478,7 @@ const Main = () => {
     return `${y}-${m}`; // e.g. 2025-10
   };
 
-  // Check for month boundary crossing and reset monthly todos if needed.
-  useEffect(() => {
-    if (!activeUserId) return;
-
-    let cancelled = false;
-
-    const runResetCheck = async () => {
-      try {
-        const now = new Date();
-        const currentMonthKey = getMonthKey(now);
-        // previous month (the month we are finalizing)
-        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const prevMonthKey = getMonthKey(prev);
-        // month before previous (for comparison)
-        const prevPrev = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-        const prevPrevMonthKey = getMonthKey(prevPrev);
-
-        const metaRef = doc(db, 'users', activeUserId, 'stats', 'monthlyMeta');
-        const metaSnap = await getDoc(metaRef);
-        const lastProcessed = metaSnap.exists() ? (metaSnap.data() as any).lastProcessedMonth : null;
-
-        // If we've already processed the previous month, nothing to do
-        if (lastProcessed === prevMonthKey) return;
-
-        // read stats for prev month (the month that just finished)
-        const prevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevMonthKey);
-        const prevStatsSnap = await getDoc(prevStatsRef);
-        const prevStats = prevStatsSnap.exists() ? (prevStatsSnap.data() as any) : { totalCompleted: 0, totalCreated: 0 };
-
-        // read stats for prev-prev month for comparison
-        const prevPrevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevPrevMonthKey);
-        const prevPrevStatsSnap = await getDoc(prevPrevStatsRef);
-        const prevPrevStats = prevPrevStatsSnap.exists() ? (prevPrevStatsSnap.data() as any) : { totalCompleted: 0, totalCreated: 0 };
-
-        // compute comparison
-        const completedThis = Number(prevStats.totalCompleted || 0);
-        const completedBefore = Number(prevPrevStats.totalCompleted || 0);
-        const delta = completedThis - completedBefore;
-
-        let msg = '';
-        if (delta > 0) {
-          msg = `You completed ${delta} more tasks than the previous month.`;
-        } else if (delta < 0) {
-          msg = `You completed ${Math.abs(delta)} fewer tasks than the previous month.`;
-        } else {
-          msg = `You completed the same number of tasks as the month before.`;
-        }
-
-        // delete all monthlyTodos and their subtasks (reset for the new month)
-        const todosCol = collection(db, 'users', activeUserId, 'monthlyTodos');
-        const todosSnap = await getDocs(todosCol);
-        const deletePromises: Promise<any>[] = [];
-        for (const td of todosSnap.docs) {
-          // delete subtasks first
-          const subsCol = collection(db, 'users', activeUserId, 'monthlyTodos', td.id, 'subtasks');
-          const subsSnap = await getDocs(subsCol);
-          for (const s of subsSnap.docs) {
-            deletePromises.push(deleteDoc(doc(db, 'users', activeUserId, 'monthlyTodos', td.id, 'subtasks', s.id)));
-          }
-          // delete todo
-          deletePromises.push(deleteDoc(doc(db, 'users', activeUserId, 'monthlyTodos', td.id)));
-        }
-
-        await Promise.all(deletePromises);
-
-  // mark meta as processed (so we don't run again)
-  await setDoc(metaRef, { lastProcessedMonth: prevMonthKey }, { merge: true });
-
-  // reset the global summary completed count so Profile/computed completedCount restarts
-  await setDoc(doc(db, 'users', activeUserId, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
-
-  // send local notification with comparison
-  await sendImmediateNotification('Monthly Summary', msg);
-      } catch (err) {
-        console.error('Month reset check failed', err);
-      }
-    };
-
-    runResetCheck();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeUserId, db]);
+  // Monthly auto-reset disabled for this page: tasks stay until user deletes them.
 
   const cancelNotification = async (identifier: string | null | undefined) => {
     if (!identifier) return;
