@@ -102,7 +102,7 @@ const Main = () => {
         }
         // right swipe -> go back (if sensible)
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
-          router.back();
+          router.push('/generalTasks' as any);
         }
       },
     })
@@ -667,7 +667,6 @@ const Main = () => {
                             </Pressable>
                           )}
                         </Checkbox>
-
                         <Pressable className="ml-3 rounded-full p-2" onPress={() => toggleExpand(todo.id)} accessibilityLabel="Toggle subtasks">
                           <Icon as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon} size="lg" />
                         </Pressable>

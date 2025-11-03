@@ -19,12 +19,11 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
-import { isUsernameAvailable, reserveUsername, releaseUsername } from '@/lib/usernames';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// username reservation removed: no longer reserving usernames during signup.
 import { app } from '../../../firebaseConfig';
 import { useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Icon, EyeIcon, EyeOffIcon, CheckIcon, CloseIcon } from '@/components/ui/icon';
+import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
 import { Platform } from 'react-native';
 import {
@@ -63,17 +62,14 @@ export default function Tab2() {
   const iconImage = require('../../../assets/images/logo1.png');
   const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = React.useState(false);
-  const [usernameAvailable, setUsernameAvailable] = React.useState<boolean | null>(null);
-  const [usernameCheckError, setUsernameCheckError] = React.useState<string | null>(null);
   const isSignUpDisabled =
     !email.trim() ||
     !username.trim() ||
     !password.trim() ||
     !confirmPassword.trim();
 
-  // final sign-up guard: require basic fields + username availability + not currently loading
-  const canSignUp = !isSignUpDisabled && !isLoading && usernameAvailable === true;
+  // final sign-up guard: require basic fields and not currently loading
+  const canSignUp = !isSignUpDisabled && !isLoading;
 
   const handlestate = () => {
     setShowPassword((showState) => {
@@ -110,59 +106,6 @@ export default function Tab2() {
       return;
     }
     try {
-        // Pre-check username availability before creating the auth user to provide
-        // faster feedback and avoid creating/deleting an Auth user in the common
-        // 'username taken' case. This still races in theory, so we keep the
-        // atomic reserve step after creating the auth user.
-        try {
-          const db = getFirestore(app);
-          let available = false;
-          try {
-            available = await isUsernameAvailable(db, username.trim());
-          } catch (checkErr: any) {
-            // if client cannot read `usernames` due to rules, fall back to callable
-            const msg: string = checkErr?.message ?? String(checkErr);
-            if (msg.startsWith('USERNAME_CHECK_FAILED:')) {
-              const parts = msg.split(':');
-              const code = parts[1] ?? 'unknown';
-              if (code === 'permission-denied') {
-                try {
-                  const functions = getFunctions(app);
-                  const checkUsername = httpsCallable(functions, 'checkUsername');
-                  const resp = await checkUsername({ username: username.trim() });
-                  available = Boolean((resp as any)?.data?.available);
-                } catch (fnErr) {
-                  console.error('Callable checkUsername failed:', fnErr);
-                  setStatusVariant('error');
-                  setStatusMessage('Unable to verify username availability. Please try again.');
-                  setIsLoading(false);
-                  return;
-                }
-              } else {
-                setStatusVariant('error');
-                setStatusMessage('Unable to verify username availability. Please try again.');
-                setIsLoading(false);
-                return;
-              }
-            } else {
-              setStatusVariant('error');
-              setStatusMessage('Unable to verify username availability. Please try again.');
-              setIsLoading(false);
-              return;
-            }
-          }
-
-          if (!available) {
-            setStatusVariant('error');
-            setStatusMessage('Username is already taken. Please choose another.');
-            setIsLoading(false);
-            return;
-          }
-        } catch (preCheckErr) {
-          console.error('Username pre-check failed:', preCheckErr);
-          // don't block signup on unexpected pre-check errors; let reserve step handle race/failure
-        }
-
       const trimmedEmail = email.trim();
       const normalizedEmail = trimmedEmail.toLowerCase();
 
@@ -175,38 +118,11 @@ export default function Tab2() {
 
       const db = getFirestore(app);
 
-      // Reserve username atomically. If reservation fails, delete the created auth user to rollback.
-      try {
-        await reserveUsername(db, username.trim(), user.uid);
-      } catch (reserveErr: any) {
-        console.error('Username reservation failed:', reserveErr);
-        // Clean up: delete the newly created auth user if possible
-        try {
-          await user.delete();
-        } catch (delErr) {
-          console.error('Failed to delete user after reservation failure:', delErr);
-        }
-        // Parse reservation error messages produced by lib/usernames
-        const rmsg: string = reserveErr?.message ?? String(reserveErr);
-        if (rmsg === 'USERNAME_TAKEN') {
-          setStatusVariant('error');
-          setStatusMessage('Username is already taken. Please choose another.');
-        } else if (rmsg.startsWith('USERNAME_RESERVE_FAILED:')) {
-          const code = rmsg.split(':')[1] ?? 'unknown';
-          if (code === 'permission-denied') {
-            setStatusVariant('error');
-            setStatusMessage('Permission denied when reserving username. Check Firestore rules for `usernames`.');
-          } else {
-            setStatusVariant('error');
-            setStatusMessage(`Failed to reserve username (${code}). Please try again.`);
-          }
-        } else {
-          setStatusVariant('error');
-          setStatusMessage('Failed to reserve username. Please try again.');
-        }
-        setIsLoading(false);
-        return;
-      }
+      // NOTE: username reservation removed — we no longer attempt to atomically
+      // reserve usernames during signup. The username field will simply be
+      // stored on the user doc below. If you want uniqueness guaranteed,
+      // reintroduce server-side checks (callable function) or Firestore
+      // reservation logic in a future change.
 
       // Update profile displayName now that username is reserved
       try {
@@ -215,12 +131,7 @@ export default function Tab2() {
         });
       } catch (profileErr) {
         console.error('Failed to update profile displayName:', profileErr);
-        // best-effort: release username and delete user
-        try {
-          await releaseUsername(db, username.trim());
-        } catch (releaseErr) {
-          console.error('Failed to release username after profile update failure:', releaseErr);
-        }
+        // cleanup: delete the created auth user if possible
         try {
           await user.delete();
         } catch (delErr) {
@@ -246,12 +157,7 @@ export default function Tab2() {
         );
       } catch (firestoreError) {
         console.error('Failed to persist user profile:', firestoreError);
-        // cleanup: release username and delete user
-        try {
-          await releaseUsername(db, username.trim());
-        } catch (releaseErr) {
-          console.error('Failed to release username after firestore write failure:', releaseErr);
-        }
+        // cleanup: delete the created auth user if possible
         try {
           await user.delete();
         } catch (delErr) {
@@ -294,70 +200,6 @@ export default function Tab2() {
       };
     }, [resetForm])
   );
-
-  // Debounced username availability check
-  React.useEffect(() => {
-    const trimmed = username.trim();
-    if (!trimmed) {
-      setUsernameAvailable(null);
-      setUsernameCheckError(null);
-      setIsCheckingUsername(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsCheckingUsername(true);
-    setUsernameAvailable(null);
-    setUsernameCheckError(null);
-
-    const id = setTimeout(async () => {
-      try {
-        const db = getFirestore(app);
-        const available = await isUsernameAvailable(db, trimmed);
-        if (!cancelled) {
-          setUsernameAvailable(available);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          const msg: string = err?.message ?? String(err);
-          // parse our error prefix if present
-          if (msg.startsWith('USERNAME_CHECK_FAILED:')) {
-            const parts = msg.split(':');
-            const code = parts[1] ?? 'unknown';
-            if (code === 'permission-denied') {
-              // Firestore read denied. Try callable function fallback if functions are available.
-              try {
-                const functions = getFunctions(app);
-                const checkUsername = httpsCallable(functions, 'checkUsername');
-                const resp = await checkUsername({ username: trimmed });
-                if (!cancelled) {
-                  // response from callable may be untyped; narrow using 'any'
-                  setUsernameAvailable(Boolean((resp as any)?.data?.available));
-                  setUsernameCheckError(null);
-                }
-              } catch (fnErr) {
-                console.error('Callable checkUsername failed:', fnErr);
-                setUsernameCheckError('Missing permission to read usernames (permission-denied)');
-                setUsernameAvailable(null);
-              }
-            } else {
-              setUsernameCheckError(`Username check failed (${code})`);
-            }
-          } else {
-            setUsernameCheckError(msg);
-          }
-          setUsernameAvailable(null);
-        }
-      } finally {
-        if (!cancelled) setIsCheckingUsername(false);
-      }
-    }, 550);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [username]);
 
   return (
     <KeyboardAvoidingView
@@ -404,10 +246,7 @@ export default function Tab2() {
               autoCapitalize="none"
             />
           </Input>
-          {/* show small error/help text if availability check fails (e.g. permission denied) */}
-          {usernameCheckError ? (
-            <Text className="mt-1 text-sm text-error-600">{usernameCheckError}. Check your Firestore rules for the `usernames` collection.</Text>
-          ) : null}
+          
           <Input
             variant="rounded"
             size="xl"
@@ -416,20 +255,12 @@ export default function Tab2() {
             isReadOnly={false}
           >
             <InputField
-              placeholder="Username"
+              placeholder="Name"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
             />
-            <InputSlot className="pr-3">
-              {isCheckingUsername ? (
-                <Spinner size="small" color={Colors[colorScheme].text} />
-              ) : usernameAvailable === true ? (
-                <CheckIcon className="w-4 h-4 text-success-600" />
-              ) : usernameAvailable === false ? (
-                <CloseIcon className="w-4 h-4 text-error-600" />
-              ) : null}
-            </InputSlot>
+          
           </Input>
           <Input
             variant="rounded"

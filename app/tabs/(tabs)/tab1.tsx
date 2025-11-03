@@ -67,7 +67,7 @@ export default function Tab1() {
       setPassword('');
       setStatusVariant('success');
       setStatusMessage('Signed in successfully. Redirecting...');
-      router.replace('/tasks');
+      router.replace('/generalTasks');
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
