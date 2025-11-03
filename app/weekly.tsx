@@ -647,16 +647,22 @@ const Main = () => {
 
 
                     <Box className="mt-3">
-                        <Pressable className=" flex-row items-center justify-end rounded-md"
-                            onPress={() => setShowModal(true)}>
-
-                            <Text size="lg">Add Task</Text>
-                            <Icon
-                                as={AddIcon}
-                                size="lg"
-                                className="text-typography-600"
-                            />
-                        </Pressable>
+                      <Box className=" flex-row items-center justify-start rounded-md">
+           <Pressable onPress={() => router.push('/generalTasks')}>
+           <Text size="lg" className="ml-2">General</Text>
+           </Pressable>
+            <Text size="lg" className="ml-2">•</Text>
+            <Pressable onPress={() => router.push('/tasks')}>
+            <Text size="lg" className="ml-2">Today</Text>   
+            </Pressable>
+            <Text size="lg" className="ml-2">•</Text>
+            <Text size="lg" className="ml-2 border-b border-typography-900 pb-1">Weekly</Text>
+            <Text size="lg" className="ml-2">•</Text>
+            <Pressable onPress={() => router.push('/month')}>
+            <Text size="lg" className="ml-2" >Monthly</Text>   
+            </Pressable>
+            <Text size="lg" className="ml-2">•</Text>
+          </Box>
                         {!isAuthenticated && <Text className="mt-2 text-typography-500">Sign in to sync tasks across your devices.</Text>}
 
                         <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">

@@ -110,6 +110,59 @@ export default function Tab2() {
       return;
     }
     try {
+        // Pre-check username availability before creating the auth user to provide
+        // faster feedback and avoid creating/deleting an Auth user in the common
+        // 'username taken' case. This still races in theory, so we keep the
+        // atomic reserve step after creating the auth user.
+        try {
+          const db = getFirestore(app);
+          let available = false;
+          try {
+            available = await isUsernameAvailable(db, username.trim());
+          } catch (checkErr: any) {
+            // if client cannot read `usernames` due to rules, fall back to callable
+            const msg: string = checkErr?.message ?? String(checkErr);
+            if (msg.startsWith('USERNAME_CHECK_FAILED:')) {
+              const parts = msg.split(':');
+              const code = parts[1] ?? 'unknown';
+              if (code === 'permission-denied') {
+                try {
+                  const functions = getFunctions(app);
+                  const checkUsername = httpsCallable(functions, 'checkUsername');
+                  const resp = await checkUsername({ username: username.trim() });
+                  available = Boolean((resp as any)?.data?.available);
+                } catch (fnErr) {
+                  console.error('Callable checkUsername failed:', fnErr);
+                  setStatusVariant('error');
+                  setStatusMessage('Unable to verify username availability. Please try again.');
+                  setIsLoading(false);
+                  return;
+                }
+              } else {
+                setStatusVariant('error');
+                setStatusMessage('Unable to verify username availability. Please try again.');
+                setIsLoading(false);
+                return;
+              }
+            } else {
+              setStatusVariant('error');
+              setStatusMessage('Unable to verify username availability. Please try again.');
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          if (!available) {
+            setStatusVariant('error');
+            setStatusMessage('Username is already taken. Please choose another.');
+            setIsLoading(false);
+            return;
+          }
+        } catch (preCheckErr) {
+          console.error('Username pre-check failed:', preCheckErr);
+          // don't block signup on unexpected pre-check errors; let reserve step handle race/failure
+        }
+
       const trimmedEmail = email.trim();
       const normalizedEmail = trimmedEmail.toLowerCase();
 
