@@ -637,11 +637,11 @@ const Main = () => {
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
-          <HStack space="xl" className="items-center justify-between flex-1 mb-2">
+          <HStack space="lg" className="items-center justify-between flex-1 mb-2">
             <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
               Tasks
             </Text>
-            <Text size="lg" className="text-typography-500">General</Text>
+            
           </HStack>
           <Box className="w-[56px]" />
         </Box>

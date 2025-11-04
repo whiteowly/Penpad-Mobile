@@ -50,6 +50,7 @@ import {
 } from 'firebase/firestore';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
+import { getWeekNumber } from './dateCalculator';
 
 type SubtaskItem = {
     id: string;
@@ -637,7 +638,7 @@ const Main = () => {
                                     <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
                                       Tasks
                                     </Text>
-                                    <Text size="lg" className="text-typography-500">This Week</Text>
+                                    <Text size="lg" className="text-typography-500">Week {getWeekNumber()}</Text>
                                   </HStack>
                         <Box className="w-[56px]" />
                     </Box>

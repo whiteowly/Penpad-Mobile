@@ -223,17 +223,32 @@ const Main = () => {
           } catch (e) {
             console.error('Failed to update monthly completed count', e);
           }
+          // update daily completed counter
+          try {
+            const dayKey = getDayKey(new Date());
+            const dayStatsRef = doc(db, 'users', activeUserId, 'dailyStats', dayKey);
+            await setDoc(dayStatsRef, { totalCompleted: increment(1) }, { merge: true });
+          } catch (e) {
+            console.error('Failed to update daily completed count', e);
+          }
         } catch (statsError) {
           console.error('Failed to update completed-task count', statsError);
         }
       } else {
-        // if the todo was un-completed, decrement monthly completed counter (best-effort)
+        // if the todo was un-completed, decrement monthly and daily completed counters (best-effort)
         try {
           const monthKey = getMonthKey(new Date());
           const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
           await setDoc(monthStatsRef, { totalCompleted: increment(-1) }, { merge: true });
         } catch (e) {
           // ignore
+        }
+        try {
+          const dayKey = getDayKey(new Date());
+          const dayStatsRef = doc(db, 'users', activeUserId, 'dailyStats', dayKey);
+          await setDoc(dayStatsRef, { totalCompleted: increment(-1) }, { merge: true });
+        } catch (e) {
+          // ignore daily decrement errors
         }
       }
     } catch (error) {
@@ -441,11 +456,19 @@ const Main = () => {
       console.error('Failed to send notification', err);
     }
   };
+ 
 
   const getMonthKey = (d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     return `${y}-${m}`;
+  };
+
+  const getDayKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
 
   // Month-boundary check for todos: clear `todos` at month boundary and notify
@@ -518,6 +541,69 @@ const Main = () => {
     };
 
     runResetCheck();
+  }, [activeUserId, db]);
+
+  // Daily rollover: finalize yesterday and clear todos every day
+  useEffect(() => {
+    if (!activeUserId) return;
+
+    const runDailyReset = async () => {
+      try {
+        const now = new Date();
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+        const yKey = getDayKey(yesterday);
+        const prevDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() - 1);
+        const prevKey = getDayKey(prevDay);
+
+        const metaRef = doc(db, 'users', activeUserId, 'stats', 'dailyMeta');
+        const metaSnap = await getDoc(metaRef);
+        const lastProcessed = metaSnap.exists() ? (metaSnap.data() as any).lastProcessedDay : null;
+        if (lastProcessed === yKey) return;
+
+        const yStatsRef = doc(db, 'users', activeUserId, 'dailyStats', yKey);
+        const yStatsSnap = await getDoc(yStatsRef);
+        const yStats = yStatsSnap.exists() ? (yStatsSnap.data() as any) : { totalCompleted: 0 };
+
+        const prevStatsRef = doc(db, 'users', activeUserId, 'dailyStats', prevKey);
+        const prevStatsSnap = await getDoc(prevStatsRef);
+        const prevStats = prevStatsSnap.exists() ? (prevStatsSnap.data() as any) : { totalCompleted: 0 };
+
+        const completedThis = Number(yStats.totalCompleted || 0);
+        const completedBefore = Number(prevStats.totalCompleted || 0);
+        const delta = completedThis - completedBefore;
+
+        let msg = '';
+        if (delta > 0) msg = `You completed ${delta} more tasks than the previous day.`;
+        else if (delta < 0) msg = `You completed ${Math.abs(delta)} fewer tasks than the previous day.`;
+        else msg = `You completed the same number of tasks as the day before.`;
+
+        // delete todos and their subtasks
+        const todosCol = collection(db, 'users', activeUserId, 'todos');
+        const todosSnap = await getDocs(todosCol);
+        const deletes: Promise<any>[] = [];
+        for (const td of todosSnap.docs) {
+          const subsCol = collection(db, 'users', activeUserId, 'todos', td.id, 'subtasks');
+          const subsSnap = await getDocs(subsCol);
+          for (const s of subsSnap.docs) {
+            deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'todos', td.id, 'subtasks', s.id)));
+          }
+          deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'todos', td.id)));
+        }
+        await Promise.all(deletes);
+
+        await setDoc(metaRef, { lastProcessedDay: yKey }, { merge: true });
+
+        // reset the global summary completed count so Profile/computed completedCount restarts
+        await setDoc(doc(db, 'users', activeUserId, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
+
+        await sendImmediateNotification('Daily Summary', msg);
+      } catch (err) {
+        console.error('Tasks daily reset failed', err);
+      }
+    };
+
+    runDailyReset();
   }, [activeUserId, db]);
 
   const cancelNotification = async (identifier: string | null | undefined) => {
@@ -593,7 +679,9 @@ const Main = () => {
   };
 
   const pendingTodo = pendingDeleteTodoId ? todos.find((t) => t.id === pendingDeleteTodoId) : null;
-
+  const getDayOfWeek = (date = new Date(), locale = 'en-US') => {
+   return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
+};
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <View {...panResponder.panHandlers} style={{ flex: 1 }}>
@@ -606,7 +694,7 @@ const Main = () => {
             <Text className="text-xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
               Tasks
             </Text>
-            <Text size="lg" className="text-typography-500">Today</Text>
+            <Text size="lg" className="text-typography-500">{getDayOfWeek()}</Text>
           </HStack>
           <Box className="w-[56px]" />
         </Box>

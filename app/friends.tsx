@@ -192,7 +192,7 @@ const Main = () => {
               <VStack key={f.uid} className="mb-1">
               <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
                 <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
-                
+                <Pressable onPress={() => router.push('/chat')}>
                 <Avatar size="md">
                   {resolvedAvatar ? (
                     <AvatarImage source={{ uri: resolvedAvatar }} alt="Profile avatar" />
@@ -200,7 +200,7 @@ const Main = () => {
                     <AvatarFallbackText>{f.displayName}</AvatarFallbackText>
                   )}
                 </Avatar>
-                
+                </Pressable>
               </HStack>
       
               </VStack>
