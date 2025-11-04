@@ -81,6 +81,55 @@ service cloud.firestore {
 
     // Default: deny everything else. Be explicit about collection rules as
     // your app grows instead of opening up a permissive catch-all.
+    // Chat metadata and messages.
+    // Chats should contain a small metadata document at `chats/{chatId}`
+    // with a `participants` array (e.g. [uid1, uid2]). Rules below ensure
+    // only participants can read/write messages.
+    match /chats/{chatId} {
+  // Allow creating a chat metadata doc if the authenticated user is
+  // included in the provided participants array. This lets the client
+  // create the chat document before sending the first message.
+  allow create: if request.auth != null
+        && request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants;
+
+  // Allow reading chat metadata for authenticated users so clients can
+  // check existence before creating. This is a small relaxation to
+  // enable client-side create-if-missing flows; tighten later if
+  // necessary (e.g. to participants-only reads).
+  allow get: if request.auth != null;
+
+      // Disallow client-side updates/deletes to chat metadata for now.
+      allow update, delete: if false;
+
+      match /messages/{messageId} {
+        // Helper: check that the chat metadata exists and the caller is a participant
+        function isParticipant() {
+          return exists(/databases/$(database)/documents/chats/$(chatId))
+                 && request.auth != null
+                 && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        }
+
+        // Only participants may read messages for this chat.
+        allow get, list: if isParticipant();
+
+        // Creation: caller must be authenticated, must be a participant,
+        // fromUid must match caller, toUid must be one of the participants,
+        // and either text or mediaUrl must be provided.
+        allow create: if isParticipant()
+                      && request.resource.data.fromUid == request.auth.uid
+                      && request.resource.data.toUid is string
+                      && request.resource.data.toUid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+                      && (
+                        request.resource.data.text is string ||
+                        request.resource.data.mediaUrl is string
+                      );
+
+        // Disallow client updates/deletes of existing messages.
+        allow update, delete: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

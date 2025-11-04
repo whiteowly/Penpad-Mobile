@@ -38,7 +38,7 @@ import {
 import { ScrollView } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 
-type FriendDoc = { uid: string; displayName?: string; username?: string; createdAt?: any };
+type FriendDoc = { uid: string; displayName?: string; username?: string; photoURL?: string; createdAt?: any };
 
 const Main = () => {
   const colorScheme = useColorScheme();
@@ -192,14 +192,14 @@ const Main = () => {
               <VStack key={f.uid} className="mb-1">
               <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
                 <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
-                <Pressable onPress={() => router.push('/chat')}>
-                <Avatar size="md">
-                  {resolvedAvatar ? (
-                    <AvatarImage source={{ uri: resolvedAvatar }} alt="Profile avatar" />
-                  ) : (
-                    <AvatarFallbackText>{f.displayName}</AvatarFallbackText>
-                  )}
-                </Avatar>
+                <Pressable onPress={() => router.push(`/chat?uid=${encodeURIComponent(f.uid)}`)}>
+                  <Avatar size="md">
+                    {f.photoURL ? (
+                      <AvatarImage source={{ uri: f.photoURL }} alt="Profile avatar" />
+                    ) : (
+                      <AvatarFallbackText>{f.displayName ?? f.username ?? f.uid}</AvatarFallbackText>
+                    )}
+                  </Avatar>
                 </Pressable>
               </HStack>
       
