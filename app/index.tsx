@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+
 const FeatureCard = ({ iconSvg: IconSvg, name, desc }: any) => {
   
   return (
