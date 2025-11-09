@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "923363544696",
+    "project_id": "penpad-d7362",
+    "storage_bucket": "penpad-d7362.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:923363544696:android:e7ebbe8d46a484719da78d",
+        "android_client_info": {
+          "package_name": "com.jer.todolisss"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGq4Ig__im0I6_MY3DYBDc9U9VZ7EYEcc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

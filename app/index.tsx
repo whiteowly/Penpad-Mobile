@@ -2,16 +2,20 @@ import React from 'react';
 import Gradient from '@/assets/icons/Gradient';
 import Logo from '@/assets/icons/Logo';
 import { Box } from '@/components/ui/box';
-import { ScrollView } from 'react-native';
+import { ScrollView, FlatList } from 'react-native';
 import { Text } from '@/components/ui/text';
-
 import { Button, ButtonText } from '@/components/ui/button';
 import { useRouter } from 'expo-router';
 import { Icon } from '@/components/ui/icon';
+import { useEffect, useState } from 'react';  
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 const FeatureCard = ({ iconSvg: IconSvg, name, desc }: any) => {
+  
   return (
+    <SafeAreaView>
     <Box
       className="flex-column md:flex-1 m-2 p-4 rounded-lg bg-background-0/40"
       key={name}
@@ -22,6 +26,7 @@ const FeatureCard = ({ iconSvg: IconSvg, name, desc }: any) => {
       </Box>
       <Text className="mt-2">{desc}</Text>
     </Box>
+    </SafeAreaView>
   );
 };
 
@@ -52,7 +57,7 @@ export default function Home() {
               size="sm"
               className="bg-primary-500 px-6 py-2 rounded-full"
               onPress={() => {
-                router.push('/tabs/tab1');
+                router.push('/tab2/tab1');
               }}
             >
               <ButtonText>I've got a lot to do!</ButtonText>
