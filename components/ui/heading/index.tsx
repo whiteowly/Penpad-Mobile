@@ -3,6 +3,22 @@ import { H1, H2, H3, H4, H5, H6 } from '@expo/html-elements';
 import { headingStyle } from './styles';
 import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
 import { cssInterop } from 'nativewind';
+import type { StyleProp, TextStyle } from 'react-native';
+
+const mergeFontStyle = (
+  style: StyleProp<TextStyle> | undefined,
+  fontFamily: string
+): StyleProp<TextStyle> => {
+  const base: TextStyle = { fontFamily };
+
+  if (!style) {
+    return base;
+  }
+
+  return Array.isArray(style)
+    ? [base, ...style]
+    : [base, style];
+};
 
 type IHeadingProps = VariantProps<typeof headingStyle> &
   React.ComponentPropsWithoutRef<typeof H1> & {
@@ -33,141 +49,86 @@ const MappedHeading = memo(
       },
       ref
     ) {
+      const { style, ...restProps } = props;
+
+      const computedClassName = headingStyle({
+        size,
+        isTruncated: isTruncated as boolean,
+        bold: bold as boolean,
+        underline: underline as boolean,
+        strikeThrough: strikeThrough as boolean,
+        sub: sub as boolean,
+        italic: italic as boolean,
+        highlight: highlight as boolean,
+        class: className,
+      } as any);
+      // Do not merge font here; top-level `Heading` will pass the merged style down.
+
       switch (size) {
         case '5xl':
         case '4xl':
         case '3xl':
           return (
             <H1
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         case '2xl':
           return (
             <H2
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         case 'xl':
           return (
             <H3
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         case 'lg':
           return (
             <H4
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         case 'md':
           return (
             <H5
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         case 'sm':
         case 'xs':
           return (
             <H6
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
         default:
           return (
             <H4
-              className={headingStyle({
-                size,
-                isTruncated: isTruncated as boolean,
-                bold: bold as boolean,
-                underline: underline as boolean,
-                strikeThrough: strikeThrough as boolean,
-                sub: sub as boolean,
-                italic: italic as boolean,
-                highlight: highlight as boolean,
-                class: className,
-              })}
-              {...props}
-              // @ts-expect-error : type issue
-              ref={ref}
+              className={computedClassName}
+              style={style as any}
+              {...restProps}
+              ref={ref as any}
             />
           );
       }
@@ -188,29 +149,54 @@ const Heading = memo(
       sub,
       italic,
       highlight,
+      style,
+      ...restProps
     } = props;
+
+    const computedClassName = headingStyle({
+      size,
+      isTruncated: isTruncated as boolean,
+      bold: bold as boolean,
+      underline: underline as boolean,
+      strikeThrough: strikeThrough as boolean,
+      sub: sub as boolean,
+      italic: italic as boolean,
+      highlight: highlight as boolean,
+      class: className,
+    } as any);
+
+    
+    const incomingStyle = style as StyleProp<TextStyle>;
+    const resolvedFontFamily =
+      bold === false ? 'Poppins_500Medium' : 'Poppins_700Bold';
+
+    const mergedStyle = mergeFontStyle(incomingStyle, resolvedFontFamily);
 
     if (AsComp) {
       return (
         <AsComp
-          className={headingStyle({
-            size,
-            isTruncated: isTruncated as boolean,
-            bold: bold as boolean,
-            underline: underline as boolean,
-            strikeThrough: strikeThrough as boolean,
-            sub: sub as boolean,
-            italic: italic as boolean,
-            highlight: highlight as boolean,
-            class: className,
-          })}
-          {...props}
+          className={computedClassName}
+          style={mergedStyle as any}
+          {...restProps}
         />
       );
     }
 
     return (
-      <MappedHeading className={className} size={size} ref={ref} {...props} />
+      <MappedHeading
+        className={className}
+        size={size}
+        isTruncated={isTruncated}
+        bold={bold}
+        underline={underline}
+        strikeThrough={strikeThrough}
+        sub={sub}
+        italic={italic}
+        highlight={highlight}
+        style={mergedStyle as any}
+        ref={ref as any}
+        {...restProps}
+      />
     );
   })
 );

@@ -35,6 +35,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="star-o" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="forgotPwd"
+        options={{
+          title: 'Forgot Password',
+          href: null,
+          tabBarIcon: ({ color }) => <TabBarIcon name="star-o" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

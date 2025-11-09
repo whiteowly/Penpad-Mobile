@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // usernames mapping: usernames/{normalizedUsername} -> { uid, createdAt }
+    match /usernames/{username} {
+      // allow authenticated clients to read a single username doc
+      allow get, list: if false;
+
+      // Creating a username mapping is allowed only when the caller is the
+      // same user as the uid stored in the document.
+      allow create: if request.auth != null
+                      && request.auth.uid == request.resource.data.uid;
+
+      // Allow deletion only by the original reserver
+      allow delete: if request.auth != null
+                      && resource.data.uid == request.auth.uid;
+
+      // Prevent client-side updates
+      allow update: if false;
+    }
+
+    // Incoming friend requests live at: users/{userId}/friendRequests/{requestId}
+    match /users/{userId}/friendRequests/{requestId} {
+      // Only the recipient (userId) may list/read their incoming requests
+      allow list, get: if request.auth != null && request.auth.uid == userId;
+
+      // Creating a friend request must be done by the sender and must
+      // include their uid as fromUid. This allows an authenticated user to
+      // send a request to another user.
+      allow create: if request.auth != null
+                     && request.auth.uid == request.resource.data.fromUid
+                     && request.resource.data.fromUid == request.auth.uid
+                     && request.resource.data.status == 'pending';
+
+      // Allow deletion by recipient (reject/accept) or sender (cancel)
+      allow delete: if request.auth != null && (
+        request.auth.uid == userId || // recipient can remove
+        request.auth.uid == resource.data.fromUid // sender can cancel
+      );
+
+      // Disallow client-side updates
+      allow update: if false;
+    }
+
+    // Friends documents: users/{userId}/friends/{friendUid}
+    match /users/{userId}/friends/{friendUid} {
+      // Allow read for either side
+      allow get, list: if request.auth != null && (request.auth.uid == userId || request.auth.uid == friendUid);
+
+      // Allow creation if the caller is either the owner of this doc (userId)
+      // or the friend (friendUid). This supports the app writing both
+      // directions when accepting a request.
+      allow create: if request.auth != null && (request.auth.uid == userId || request.auth.uid == friendUid)
+                    && request.resource.data.uid == friendUid;
+
+      // Allow deletion by either side
+      allow delete: if request.auth != null && (request.auth.uid == userId || request.auth.uid == friendUid);
+
+      allow update: if false;
+    }
+
+    // Outgoing (sent) requests stored under: users/{userId}/sentRequests/{targetUid}
+    match /users/{userId}/sentRequests/{targetUid} {
+      // Only the owner may list/get their own sent requests
+      allow get, list: if request.auth != null && request.auth.uid == userId;
+
+      // Creation only allowed by the owner (sender)
+      allow create: if request.auth != null
+                     && request.auth.uid == request.resource.data.fromUid
+                     && request.resource.data.fromUid == request.auth.uid
+                     && request.resource.data.toUid == targetUid
+                     && request.resource.data.status == 'pending'
+                     && request.resource.data.createdAt is timestamp;
+
+      // Deletion only by the owner (sender)
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      allow update: if false;
+    }
+
+    // Default: deny everything else. Be explicit about collection rules as
+    // your app grows instead of opening up a permissive catch-all.
+    // Chat metadata and messages.
+    // Chats should contain a small metadata document at `chats/{chatId}`
+    // with a `participants` array (e.g. [uid1, uid2]). Rules below ensure
+    // only participants can read/write messages.
+    match /chats/{chatId} {
+  // Allow creating a chat metadata doc if the authenticated user is
+  // included in the provided participants array. This lets the client
+  // create the chat document before sending the first message.
+  allow create: if request.auth != null
+        && request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants;
+
+  // Allow reading chat metadata for authenticated users so clients can
+  // check existence before creating. This is a small relaxation to
+  // enable client-side create-if-missing flows; tighten later if
+  // necessary (e.g. to participants-only reads).
+  allow get: if request.auth != null;
+
+      // Disallow client-side updates/deletes to chat metadata for now.
+      allow update, delete: if false;
+
+      match /messages/{messageId} {
+        // Helper: check that the chat metadata exists and the caller is a participant
+        function isParticipant() {
+          return exists(/databases/$(database)/documents/chats/$(chatId))
+                 && request.auth != null
+                 && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        }
+
+        // Only participants may read messages for this chat.
+        allow get, list: if isParticipant();
+
+        // Creation: caller must be authenticated, must be a participant,
+        // fromUid must match caller, toUid must be one of the participants,
+        // and either text or mediaUrl must be provided.
+        allow create: if isParticipant()
+                      && request.resource.data.fromUid == request.auth.uid
+                      && request.resource.data.toUid is string
+                      && request.resource.data.toUid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+                      && (
+                        request.resource.data.text is string ||
+                        request.resource.data.mediaUrl is string
+                      );
+
+        // Disallow client updates/deletes of existing messages.
+        allow update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

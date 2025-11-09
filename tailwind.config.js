@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const plugin = require('tailwindcss/plugin');
+
 module.exports = {
   darkMode: process.env.DARK_MODE ? process.env.DARK_MODE : 'class',
   content: [
@@ -172,9 +174,13 @@ module.exports = {
         },
       },
       fontFamily: {
-        heading: undefined,
-        body: undefined,
-        mono: undefined,
+        heading: ['Poppins_600SemiBold'],
+        body: ['Poppins_400Regular'],
+        mono: ['Poppins_400Regular'],
+        poppins: ['Poppins_400Regular'],
+        'poppins-medium': ['Poppins_500Medium'],
+        'poppins-semibold': ['Poppins_600SemiBold'],
+        'poppins-bold': ['Poppins_700Bold'],
         jakarta: ['var(--font-plus-jakarta-sans)'],
         roboto: ['var(--font-roboto)'],
         code: ['var(--font-source-code-pro)'],
@@ -200,4 +206,38 @@ module.exports = {
       },
     },
   },
+  plugins: [
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        '.font-poppins': {
+          fontFamily: 'Poppins_400Regular',
+          fontWeight: '400',
+        },
+        '.font-poppins-medium': {
+          fontFamily: 'Poppins_500Medium',
+          fontWeight: '500',
+        },
+        '.font-poppins-semibold': {
+          fontFamily: 'Poppins_600SemiBold',
+          fontWeight: '600',
+        },
+        '.font-poppins-bold': {
+          fontFamily: 'Poppins_700Bold',
+          fontWeight: '700',
+        },
+        '.font-medium': {
+          fontFamily: 'Poppins_500Medium',
+          fontWeight: '500',
+        },
+        '.font-semibold': {
+          fontFamily: 'Poppins_600SemiBold',
+          fontWeight: '600',
+        },
+        '.font-bold': {
+          fontFamily: 'Poppins_700Bold',
+          fontWeight: '700',
+        },
+      });
+    }),
+  ],
 };

@@ -1,12 +1,22 @@
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '@/global.css';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from '@react-navigation/native';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Slot } from 'expo-router';
-import { ColorModeProvider, useColorModeContext } from '../context/ColorModeContext';
+import { registerThemeHandlers, unregisterThemeHandlers } from '../lib/themeManager';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -17,7 +27,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/Poppins-Regular.ttf'),
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
     ...FontAwesome.font,
   });
 
@@ -35,16 +48,17 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  return (
-    <ColorModeProvider>
-      <AppProviders />
-    </ColorModeProvider>
-  );
-}
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
 
-function AppProviders() {
-  const { colorMode } = useColorModeContext();
-  const themeValue = colorMode === 'dark' ? DarkTheme : DefaultTheme;
+  useEffect(() => {
+    registerThemeHandlers(
+      () =>
+        setColorMode((prev) => (prev === 'dark' ? 'light' : 'dark')),
+      () => colorMode
+    );
+
+    return unregisterThemeHandlers;
+  }, [colorMode]);
 
   return (
     <GluestackUIProvider mode={colorMode}>

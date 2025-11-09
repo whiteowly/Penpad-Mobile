@@ -16,106 +16,119 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { Icon, MoonIcon, SunIcon } from '@/components/ui/icon';
-import {
-  User,
-  Home,
-  ShoppingCart,
-  Wallet,
-  LogOut,
-  MenuIcon,
-} from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Icon, MoonIcon, SunIcon, CalendarDaysIcon, CheckIcon } from '@/components/ui/icon';
+import { User, Home, ShoppingCart, ClockIcon, LogOut, MenuIcon,  } from 'lucide-react-native';
+import React from 'react';
 import { Fab, FabIcon } from '@/components/ui/fab';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { toggleTheme, getCurrentTheme } from '@/lib/themeManager';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useColorScheme } from '@/components/useColorScheme';
+import { useState } from 'react';
+import { Colors } from '@/constants/Colors';
+import { useRouter } from 'expo-router';
 
+
+import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../firebaseConfig';
-import { useColorModeContext } from '../context/ColorModeContext';
+import { HStack } from '@/components/ui/hstack';
+
 
 function Sidebar() {
-  const [showDrawer, setShowDrawer] = useState(false);
+  const [showDrawer, setShowDrawer] = React.useState(false);
+  const currentTheme = getCurrentTheme() ?? 'light';
+
   const auth = getAuth(app);
-  const [user, setUser] = useState(auth.currentUser);
-  const { colorMode, toggleColorMode } = useColorModeContext();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-
-    return unsubscribe;
-  }, [auth]);
-
-  const displayName = user?.displayName ?? user?.email ?? 'Guest';
+    const [email, setEmail] = useState('');
+    const [user, setUser] = useState(auth.currentUser);
+   const displayName = user?.displayName ?? user?.email ?? '';
+    const colorScheme = useColorScheme();
+  const backgroundColor = Colors[colorScheme].background;
+  const router = useRouter();
 
   return (
     <>
-      <Fab
-        placement="top right"
-        size="lg"
-        className="top-6 right-6"
+      
+      {/* <Fab
+        placement="top left"
+        size="xl"
+        className="relative top-0 left-0 z-10"
         onPress={() => setShowDrawer(true)}
       >
         <FabIcon as={MenuIcon} />
-      </Fab>
-      <Drawer isOpen={showDrawer} onClose={() => setShowDrawer(false)}>
+      </Fab> */}
+       <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => setShowDrawer(true)}>
+              <Icon as={MenuIcon} size="2xl" className="text-typography-600" />
+  
+            </Pressable>
+      <Drawer
+        isOpen={showDrawer}
+        onClose={() => {
+          setShowDrawer(false);
+        }}
+      >
         <DrawerBackdrop />
-        <DrawerContent className="w-[270px] md:w-[300px]">
+  <DrawerContent className="w-[270px] md:w-[300px]">
           <DrawerHeader className="justify-center flex-col gap-2">
+
+            <Fab
+              className="m-6"
+              size="lg"
+              onPress={toggleTheme}
+            >
+              <FabIcon
+                as={currentTheme === 'dark' ? SunIcon : MoonIcon}
+              />
+            </Fab>
+
             <Avatar size="2xl">
-              <AvatarFallbackText>User Image</AvatarFallbackText>
+              <AvatarFallbackText>{displayName}</AvatarFallbackText>
               <AvatarImage
                 source={{
-                  uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=687&q=80',
+                  uri: './assests/images/PFP.jpg'
                 }}
               />
             </Avatar>
             <VStack className="justify-center items-center">
-              <Text className="font-bold" size="lg">
-                {displayName}
+              <Text size="lg">{displayName}</Text>
+              <Text size="sm" className="text-typography-600">
+                {user?.email}
               </Text>
-              {user?.email ? (
-                <Text size="sm" className="text-typography-600">
-                  {user.email}
-                </Text>
-              ) : null}
             </VStack>
           </DrawerHeader>
           <Divider className="my-4" />
           <DrawerBody contentContainerClassName="gap-2">
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+            <Pressable 
+            className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
               <Icon as={User} size="lg" className="text-typography-600" />
               <Text>My Profile</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => {router.push('/tasks'); setShowDrawer(false);}}>
               <Icon as={Home} size="lg" className="text-typography-600" />
-              <Text>Saved Address</Text>
+              <Text>Tasks</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
-              <Icon as={ShoppingCart} size="lg" className="text-typography-600" />
-              <Text>Orders</Text>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+             onPress={() => {router.push('/friends'); setShowDrawer(false);}}>
+              <Icon
+                as={ClockIcon}
+                size="lg"
+                className="text-typography-600"
+              />
+              <Text>Friends</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
-              <Icon as={Wallet} size="lg" className="text-typography-600" />
-              <Text>Saved Cards</Text>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
+            onPress={() => {router.push('/upcoming'); setShowDrawer(false);}}>
+              <Icon as={CalendarDaysIcon} size="lg" className="text-typography-600" />
+              <Text>Upcoming</Text>
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
-            <Button
-              className="w-full gap-2 mb-2"
-              variant="outline"
-              action="secondary"
-              onPress={toggleColorMode}
-            >
-              <ButtonText>
-                {colorMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              </ButtonText>
-              <ButtonIcon as={colorMode === 'dark' ? SunIcon : MoonIcon} />
-            </Button>
-            <Button className="w-full gap-2" variant="outline" action="secondary">
-              <ButtonText>Logout</ButtonText>
-              <ButtonIcon as={LogOut} />
-            </Button>
+            
+          
+           
+            
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
