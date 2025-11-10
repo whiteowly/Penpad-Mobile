@@ -619,7 +619,7 @@ const Main = () => {
          
           <Box className=" flex-row items-center justify-start rounded-md">
            
-           <Text size="lg" className="ml-2 border-b border-typography-900 pb-1">General</Text>
+           <Text size="lg" className="ml-2 border-b border-typography-900 pb-1">GGeneral</Text>
             <Text size="lg" className="ml-2">•</Text>
             <Pressable onPress={() => router.push('/tasks' as any)}>
             <Text size="lg" className="ml-2">Today</Text>   

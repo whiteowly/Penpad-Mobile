@@ -192,7 +192,7 @@ const Main = () => {
               <VStack key={f.uid} className="mb-1">
               <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
                 <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
-                <Pressable onPress={() => router.push(`/chat?uid=${encodeURIComponent(f.uid)}`)}>
+                <Pressable onPress={() => router.push(`/chat?uid=${encodeURIComponent(f.uid)}` as any)}>
                   <Avatar size="md">
                     {f.photoURL ? (
                       <AvatarImage source={{ uri: f.photoURL }} alt="Profile avatar" />
@@ -211,7 +211,7 @@ const Main = () => {
           placement="bottom right"
           size="xl"
           className="m-6"
-          onPress={() => router.push('/addFriends')}
+          onPress={() => router.push('/addFriends' as any)}
         >
           <FabIcon as={SearchIcon} />
         </Fab>
