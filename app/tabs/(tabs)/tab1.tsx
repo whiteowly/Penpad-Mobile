@@ -1,5 +1,7 @@
+import EditScreenInfo from '@/components/EditScreenInfo';
 import { Center } from '@/components/ui/center';
 import { Divider } from '@/components/ui/divider';
+import { Heading } from '@/components/ui/heading';
 import { Text } from '@/components/ui/text';
 import { Input, InputField, InputSlot, InputIcon } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
@@ -7,18 +9,15 @@ import { Box } from '@/components/ui/box';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Platform } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, useColorScheme } from 'react-native';
 
 import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
 import { Colors } from '@/constants/Colors';
-import { EyeIcon, EyeOffIcon } from '@/components/ui/icon';
+import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Image } from '@/components/ui/image';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
-import { useColorScheme } from '@/components/useColorScheme';
-import { Spinner } from '@/components/ui/spinner';
 
 
 export default function Tab1() {
@@ -31,7 +30,6 @@ export default function Tab1() {
   const colorScheme = useColorScheme();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusVariant, setStatusVariant] = useState<'error' | 'success' | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const isSignInDisabled = !email.trim() || !password.trim();
   const iconImage = require('../../../assets/images/logo1.png');
 
@@ -60,50 +58,45 @@ export default function Tab1() {
     setStatusMessage(null);
     setStatusVariant(null);
 
-    setIsLoading(true);
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setPassword('');
       setStatusVariant('success');
       setStatusMessage('Signed in successfully. Redirecting...');
-      router.replace('/generalTasks');
+      router.replace('/generalTasks' as any);
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
-      setStatusMessage('Login failed.');
-    }
-    finally {
-      setIsLoading(false);
+      setStatusMessage(`Check email or password. `);
     }
   };
 
   const displayName = user?.displayName ?? user?.email ?? '';
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={80}
     >
-      <Center className="flex-1">
-        <VStack space="sm" className="w-[80%]">
-          <Image
-            source={iconImage}
-            accessibilityLabel="PenPad logo"
-            resizeMode="contain"
-            size='2xl'
-            className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
-          />
-          <Text
-            className="text-3xl self-center text-bold"
-            style={{ color: Colors[colorScheme].text }}
-          >
-            {user ? `Heyy, ${displayName}` : 'Login'}
-          </Text>
-
-          <Divider className='my-[20px] w-[100%]'/>
-          {!user && (
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <Center className="flex-1">
+          <VStack space="sm" className="w-[80%]">
+        <Image
+                    source={iconImage}
+                    accessibilityLabel="PenPad logo"
+                    resizeMode="contain"
+                      size='2xl' 
+                      className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
+                  />
+        <Text
+          className="text-3xl self-center text-bold" 
+        >
+          {user ? `Heyy, ${displayName}` : 'Login'}
+        </Text>
+        
+        <Divider className='my-[20px] w-[100%]'/>
+        {!user && (
           <Input 
             variant="rounded"
             size="xl"
@@ -118,7 +111,7 @@ export default function Tab1() {
               autoCapitalize="none"
             />
           </Input>
-          )}
+        )}
         <Input 
           variant="rounded"
           size="xl"
@@ -130,12 +123,12 @@ export default function Tab1() {
             <InputSlot className="pr-3" onPress={handleState}>
                 <InputIcon
                   as={showPassword ? EyeIcon : EyeOffIcon}
-                  color={Colors[colorScheme].text}
+                  color={Colors[colorScheme ?? 'light'].text}
                 />
             </InputSlot>
         </Input>
         <Box className="items-end w-full">
-          <Link onPress={() => router.push('/tabs/(tabs)/forgotPwd')}>
+          <Link href="/modal">
             <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
           </Link>
         </Box>
@@ -154,17 +147,10 @@ export default function Tab1() {
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
-            isDisabled={isSignInDisabled || isLoading}
+            isDisabled={isSignInDisabled}
             onPress={handleSignIn}
           >
-            {isLoading ? (
-              <>
-                <Spinner size="small" color={Colors[colorScheme].text} className="mr-2" />
-                <ButtonText>Signing in...</ButtonText>
-              </>
-            ) : (
-              <ButtonText> Sign In </ButtonText>
-            )}
+            <ButtonText> Sign In </ButtonText>
           </Button>
         </Box>
         <Box className='flex-row justify-center w-full'>
@@ -174,8 +160,9 @@ export default function Tab1() {
           </Link>
         </Box>
 
-      </VStack>
-    </Center>
+          </VStack>
+        </Center>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
