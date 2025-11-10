@@ -48,6 +48,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
+import { app, auth } from '../firebaseConfig';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
@@ -138,7 +139,7 @@ const Main = () => {
 
   const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
-  const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+  const { db, todos, activeUserId, isAuthenticated, lastError } = useUserTodos(todoHookOptions);
 
   const sortedTodos = useMemo(() => {
     return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
@@ -703,6 +704,8 @@ const Main = () => {
 
         
 
+        
+
         <Box className="mt-3">
         <Box className=" flex-row items-center justify-start rounded-md">
                   <Pressable onPress={() => router.push('/generalTasks')}>
@@ -777,7 +780,7 @@ const Main = () => {
                               <React.Fragment key={sub.id}>
                                 <HStack className="flex-row items-center justify-between w-full py-2">
                                   <Checkbox value={sub.id} isChecked={sub.completed} onChange={() => handleToggleSubtask(todo.id, sub)} className="flex-1">
-                                    <CheckboxIndicator>
+                              <CheckboxIndicator>
                                       <CheckboxIcon as={CheckIcon} />
                                     </CheckboxIndicator>
                                     {editingSubtaskKey === `${todo.id}:${sub.id}` ? (

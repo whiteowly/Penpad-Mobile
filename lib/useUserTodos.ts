@@ -34,15 +34,33 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     totalCreated: 0,
     totalCompleted: 0,
   });
+  const [lastError, setLastError] = useState<any | null>(null);
 
   const db = useMemo(() => getFirestore(app), []);
   const onError = options?.onError;
 
   const handleError = useCallback(
     (error: unknown) => {
-      console.error('Failed to load todo data', error);
+      // Structured logging to capture Firestore error codes (e.g. permission-denied)
+      try {
+        console.error('Failed to load todo data', {
+          message: error instanceof Error ? error.message : String(error),
+          name: (error as any)?.name ?? null,
+          code: (error as any)?.code ?? null,
+          stack: (error as any)?.stack ?? null,
+        });
+      } catch (e) {
+        console.error('Failed to load todo data (logging failed)', error);
+      }
       const message = error instanceof Error ? error.message : 'Unknown error';
       onError?.(error, message);
+      try {
+        setLastError({
+          message,
+          code: (error as any)?.code ?? null,
+          name: (error as any)?.name ?? null,
+        });
+      } catch (e) {}
     },
     [onError]
   );
@@ -61,6 +79,13 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
       setSummaryCounts({ totalCreated: 0, totalCompleted: 0 });
       return;
     }
+    // DEBUG: log current auth state / activeUserId to help diagnose permission issues
+    try {
+      console.log('DEBUG useUserTodos: starting todos listener', {
+        activeUserId,
+        authUid: auth.currentUser?.uid ?? null,
+      });
+    } catch (e) {}
 
     const todosQuery = query(
       collection(db, 'users', activeUserId, 'todos'),
@@ -214,5 +239,6 @@ export const useUserTodos = (options?: UseUserTodosOptions) => {
     completedCount,
     activeUserId,
     isAuthenticated: Boolean(activeUserId),
+    lastError,
   };
 };

@@ -79,6 +79,104 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // User-owned documents: todos, subtasks and stats. Only the user may read/write
+    // their own private data. Profiles (users/{userId}) are readable by any
+    // authenticated user so the app can show friend display names / avatars.
+    match /users/{userId} {
+      // allow other authenticated users to read a user's public profile (displayName, photoURL, username)
+      allow get: if request.auth != null;
+      allow list: if false;
+
+      // todos collection: owner-only access
+      match /todos/{todoId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+  allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.text is string;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+
+        // subtasks nested under a todo
+        match /subtasks/{subId} {
+          allow get, list: if request.auth != null && request.auth.uid == userId;
+          allow create: if request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.text is string;
+          allow update, delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // generalTodos collection: same owner-only access as /todos
+      match /generalTodos/{todoId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+                       && request.auth.uid == userId
+                       && request.resource.data.text is string;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+
+        // subtasks nested under a generalTodo
+        match /subtasks/{subId} {
+          allow get, list: if request.auth != null && request.auth.uid == userId;
+          allow create: if request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.text is string;
+          allow update, delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // monthlyTodos collection: owner-only access (mirrors todos/generalTodos)
+      match /monthlyTodos/{todoId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+                       && request.auth.uid == userId
+                       && request.resource.data.text is string;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+
+        // subtasks nested under a monthlyTodo
+        match /subtasks/{subId} {
+          allow get, list: if request.auth != null && request.auth.uid == userId;
+          allow create: if request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.text is string;
+          allow update, delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // weeklyTodos collection: owner-only access (mirrors todos/generalTodos)
+      match /weeklyTodos/{todoId} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+                       && request.auth.uid == userId
+                       && request.resource.data.text is string;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+
+        // subtasks nested under a weeklyTodo
+        match /subtasks/{subId} {
+          allow get, list: if request.auth != null && request.auth.uid == userId;
+          allow create: if request.auth != null
+                        && request.auth.uid == userId
+                        && request.resource.data.text is string;
+          allow update, delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // stats documents used by the app (summary, monthlyStats, dailyStats, dailyMeta)
+      // allow the owner to read/write their stats; other users should not modify them.
+      match /stats/{statDoc} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /monthlyStats/{monthKey} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /dailyStats/{dayKey} {
+        allow get, list: if request.auth != null && request.auth.uid == userId;
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
     // Default: deny everything else. Be explicit about collection rules as
     // your app grows instead of opening up a permissive catch-all.
     // Chat metadata and messages.
