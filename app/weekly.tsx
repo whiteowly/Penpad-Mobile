@@ -649,17 +649,17 @@ const Main = () => {
 
                     <Box className="mt-3">
                       <Box className=" flex-row items-center justify-start rounded-md">
-           <Pressable onPress={() => router.push('/generalTasks')}>
+           <Pressable onPress={() => router.push('/generalTasks' as any)}>
            <Text size="lg" className="ml-2">General</Text>
            </Pressable>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/tasks')}>
+            <Pressable onPress={() => router.push('/tasks' as any)}>
             <Text size="lg" className="ml-2">Today</Text>   
             </Pressable>
             <Text size="lg" className="ml-2">•</Text>
             <Text size="lg" className="ml-2 border-b border-typography-900 pb-1">Weekly</Text>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/month')}>
+            <Pressable onPress={() => router.push('/month' as any)}>
             <Text size="lg" className="ml-2" >Monthly</Text>   
             </Pressable>
             <Text size="lg" className="ml-2">•</Text>

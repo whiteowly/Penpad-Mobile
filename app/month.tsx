@@ -578,15 +578,15 @@ const Main = () => {
 
         <Box className="mt-3">
            <Box className=" flex-row items-center justify-start rounded-md">
-           <Pressable onPress={() => router.push('/generalTasks')}>
+           <Pressable onPress={() => router.push('/generalTasks' as any)}>
            <Text size="lg" className="ml-2">General</Text>
            </Pressable>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/tasks')}>
+            <Pressable onPress={() => router.push('/tasks' as any)}>
             <Text size="lg" className="ml-2">Today</Text>   
             </Pressable>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/weekly')}>
+            <Pressable onPress={() => router.push('/weekly' as any)}>
             <Text size="lg" className="ml-2">Weekly</Text>
             </Pressable> 
             <Text size="lg" className="ml-2">•</Text>
