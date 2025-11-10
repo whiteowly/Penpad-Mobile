@@ -48,7 +48,6 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
-import { app, auth } from '../firebaseConfig';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
@@ -139,46 +138,11 @@ const Main = () => {
 
   const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
-  // useUserTodos still provides db and auth state; we'll keep a local `todos` state
-  // that subscribes to a separate `generalTodos` collection so General and Today are independent.
-  const { db, activeUserId, isAuthenticated, lastError } = useUserTodos(todoHookOptions);
-  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
 
   const sortedTodos = useMemo(() => {
     return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [todos]);
-
-  // subscribe to `generalTodos` collection for this page so General tasks are independent
-  useEffect(() => {
-    if (!activeUserId) {
-      setTodos([]);
-      return;
-    }
-
-    const col = collection(db, 'users', activeUserId, 'generalTodos');
-    const q = query(col, orderBy('createdAt', 'asc'));
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        const items: TodoItem[] = snapshot.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            text: typeof data.text === 'string' ? data.text : '',
-            completed: Boolean(data.completed),
-            reminderAt: (data as any).reminderAt ?? null,
-            notificationId: (data as any).notificationId ?? null,
-            createdAt: (data as any).createdAt ?? null,
-            updatedAt: (data as any).updatedAt ?? null,
-          } as TodoItem;
-        });
-        setTodos(items);
-      },
-      (err) => handleLoadError(err, 'Could not load general tasks')
-    );
-
-    return () => unsub();
-  }, [db, activeUserId, handleLoadError]);
 
   const handleAddTodo = async () => {
     const trimmedValue = inputValue.trim();
@@ -191,17 +155,17 @@ const Main = () => {
 
     try {
       setIsSaving(true);
-  const todoRef = await addDoc(collection(db, 'users', activeUserId, 'generalTodos'), {
+      const todoRef = await addDoc(collection(db, 'users', activeUserId, 'todos'), {
         text: trimmedValue,
         completed: false,
         createdAt: serverTimestamp(),
       });
 
       // create subtasks if any
-        for (const s of newSubtasks) {
+      for (const s of newSubtasks) {
         const t = s.trim();
         if (!t) continue;
-        await addDoc(collection(db, 'users', activeUserId, 'generalTodos', todoRef.id, 'subtasks'), {
+        await addDoc(collection(db, 'users', activeUserId, 'todos', todoRef.id, 'subtasks'), {
           text: t,
           completed: false,
           createdAt: serverTimestamp(),
@@ -213,8 +177,8 @@ const Main = () => {
         await setDoc(statsRef, { totalCreated: increment(1) }, { merge: true });
         // also increment monthly-created counter for the current month
         try {
-            const monthKey = getMonthKey(new Date());
-            const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+          const monthKey = getMonthKey(new Date());
+          const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
           await setDoc(monthStatsRef, { totalCreated: increment(1) }, { merge: true });
         } catch (e) {
           console.error('Failed to update monthly created count', e);
@@ -242,7 +206,7 @@ const Main = () => {
     }
 
     try {
-  const todoRef = doc(db, 'users', activeUserId, 'generalTodos', todo.id);
+      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
       const willComplete = !todo.completed;
 
       await updateDoc(todoRef, { completed: willComplete, updatedAt: serverTimestamp() });
@@ -287,8 +251,8 @@ const Main = () => {
 
     try {
       setDeletingId(todo.id);
-  const todoRef = doc(db, 'users', activeUserId, 'generalTodos', todo.id);
-  await deleteDoc(todoRef);
+      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      await deleteDoc(todoRef);
     } catch (error) {
       console.error('Failed to delete task', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -306,7 +270,7 @@ const Main = () => {
 
     try {
       setDeletingId(subId);
-  const subRef = doc(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks', subId);
+      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', subId);
       await deleteDoc(subRef);
     } catch (error) {
       console.error('Failed to delete subtask', error);
@@ -333,8 +297,8 @@ const Main = () => {
 
     if (!activeUserId) return;
 
-  // subscribe to subtasks for real-time updates (under generalTodos)
-  const subCol = collection(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks');
+    // subscribe to subtasks for real-time updates
+    const subCol = collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks');
     const q = query(subCol, orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(
       q,
@@ -367,7 +331,7 @@ const Main = () => {
     const t = text.trim();
     if (!t) return null;
     try {
-      const ref = await addDoc(collection(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks'), {
+      const ref = await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
         text: t,
         completed: false,
         createdAt: serverTimestamp(),
@@ -387,7 +351,7 @@ const Main = () => {
     }
 
     try {
-  const subRef = doc(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks', sub.id);
+      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { completed: !sub.completed, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('Failed to update subtask', error);
@@ -413,8 +377,8 @@ const Main = () => {
     }
 
     try {
-  const todoRef = doc(db, 'users', activeUserId, 'generalTodos', todo.id);
-  await updateDoc(todoRef, { text: newText, updatedAt: serverTimestamp() });
+      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      await updateDoc(todoRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save todo edit', err);
       alert('Could not save task edit');
@@ -442,8 +406,8 @@ const Main = () => {
     }
 
     try {
-  const subRef = doc(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks', sub.id);
-  await updateDoc(subRef, { text: newText, updatedAt: serverTimestamp() });
+      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+      await updateDoc(subRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save subtask edit', err);
       alert('Could not save subtask edit');
@@ -571,7 +535,7 @@ const Main = () => {
       return;
     }
 
-  const todoRef = doc(db, 'users', activeUserId, 'generalTodos', todo.id);
+    const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
 
     try {
       // cancel existing
@@ -596,7 +560,7 @@ const Main = () => {
       return;
     }
 
-  const subRef = doc(db, 'users', activeUserId, 'generalTodos', todoId, 'subtasks', sub.id);
+    const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
     try {
       await cancelNotification((sub as any).notificationId);
 
@@ -638,18 +602,16 @@ const Main = () => {
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
-          <HStack space="lg" className="items-center justify-between flex-1 mb-2">
+          <HStack space="xl" className="items-center justify-between flex-1 mb-2">
             <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
               Tasks
             </Text>
-            
+            <Text size="lg" className="text-typography-500">General</Text>
           </HStack>
           <Box className="w-[56px]" />
         </Box>
 
         <Divider className="my-[1px] w-full" />
-
-        
 
         
 
@@ -659,15 +621,15 @@ const Main = () => {
            
            <Text size="lg" className="ml-2 border-b border-typography-900 pb-1">General</Text>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/tasks')}>
+            <Pressable onPress={() => router.push('/tasks' as any)}>
             <Text size="lg" className="ml-2">Today</Text>   
             </Pressable>
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/weekly')}>
+            <Pressable onPress={() => router.push('/weekly' as any)}>
             <Text size="lg" className="ml-2">Weekly</Text>
             </Pressable> 
             <Text size="lg" className="ml-2">•</Text>
-            <Pressable onPress={() => router.push('/month')}>
+            <Pressable onPress={() => router.push('/month' as any)}>
             <Text size="lg" className="ml-2" >Monthly</Text>   
             </Pressable>
             <Text size="lg" className="ml-2">•</Text>

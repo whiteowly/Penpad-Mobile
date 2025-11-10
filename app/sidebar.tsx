@@ -16,51 +16,21 @@ import {
   AvatarFallbackText,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { Icon, MoonIcon, SunIcon, CalendarDaysIcon, CheckIcon } from '@/components/ui/icon';
-import { User, Home, ShoppingCart, ClockIcon, LogOut, MenuIcon,  } from 'lucide-react-native';
+import { Icon } from '@/components/ui/icon';
+import { User, Home, ShoppingCart, Wallet, LogOut } from 'lucide-react-native';
 import React from 'react';
-import { Fab, FabIcon } from '@/components/ui/fab';
-import { toggleTheme, getCurrentTheme } from '@/lib/themeManager';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useState } from 'react';
-import { Colors } from '@/constants/Colors';
-import { useRouter } from 'expo-router';
 
-
-import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
-import { app } from '../firebaseConfig';
-import { HStack } from '@/components/ui/hstack';
-
-
-function Sidebar() {
+function Example() {
   const [showDrawer, setShowDrawer] = React.useState(false);
-  const currentTheme = getCurrentTheme() ?? 'light';
-
-  const auth = getAuth(app);
-    const [email, setEmail] = useState('');
-    const [user, setUser] = useState(auth.currentUser);
-   const displayName = user?.displayName ?? user?.email ?? '';
-    const colorScheme = useColorScheme();
-  const backgroundColor = Colors[colorScheme].background;
-  const router = useRouter();
-
   return (
     <>
-      
-      {/* <Fab
-        placement="top left"
-        size="xl"
-        className="relative top-0 left-0 z-10"
-        onPress={() => setShowDrawer(true)}
+      <Button
+        onPress={() => {
+          setShowDrawer(true);
+        }}
       >
-        <FabIcon as={MenuIcon} />
-      </Fab> */}
-       <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-            onPress={() => setShowDrawer(true)}>
-              <Icon as={MenuIcon} size="2xl" className="text-typography-600" />
-  
-            </Pressable>
+        <ButtonText>Open Menu</ButtonText>
+      </Button>
       <Drawer
         isOpen={showDrawer}
         onClose={() => {
@@ -68,72 +38,59 @@ function Sidebar() {
         }}
       >
         <DrawerBackdrop />
-  <DrawerContent className="w-[270px] md:w-[300px]">
+        <DrawerContent className="w-[270px] md:w-[300px]">
           <DrawerHeader className="justify-center flex-col gap-2">
-
-            <Fab
-              className="m-6"
-              size="lg"
-              onPress={toggleTheme}
-            >
-              <FabIcon
-                as={currentTheme === 'dark' ? SunIcon : MoonIcon}
-              />
-            </Fab>
-
             <Avatar size="2xl">
-              <AvatarFallbackText>{displayName}</AvatarFallbackText>
+              <AvatarFallbackText>User Image</AvatarFallbackText>
               <AvatarImage
                 source={{
-                  uri: './assests/images/PFP.jpg'
+                  uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80',
                 }}
               />
             </Avatar>
             <VStack className="justify-center items-center">
-              <Text size="lg">{displayName}</Text>
+              <Text size="lg">User Name</Text>
               <Text size="sm" className="text-typography-600">
-                {user?.email}
+                abc@gmail.com
               </Text>
             </VStack>
           </DrawerHeader>
           <Divider className="my-4" />
           <DrawerBody contentContainerClassName="gap-2">
-            <Pressable 
-            className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-            onPress={() => {router.push('/profile'); setShowDrawer(false);}}>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
               <Icon as={User} size="lg" className="text-typography-600" />
               <Text>My Profile</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-            onPress={() => {router.push('/tasks'); setShowDrawer(false);}}>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
               <Icon as={Home} size="lg" className="text-typography-600" />
-              <Text>Tasks</Text>
+              <Text>Saved Address</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-             onPress={() => {router.push('/friends'); setShowDrawer(false);}}>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
               <Icon
-                as={ClockIcon}
+                as={ShoppingCart}
                 size="lg"
                 className="text-typography-600"
               />
-              <Text>Friends</Text>
+              <Text>Orders</Text>
             </Pressable>
-            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
-            onPress={() => {router.push('/upcoming'); setShowDrawer(false);}}>
-              <Icon as={CalendarDaysIcon} size="lg" className="text-typography-600" />
-              <Text>Upcoming</Text>
+            <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md">
+              <Icon as={Wallet} size="lg" className="text-typography-600" />
+              <Text>Saved Cards</Text>
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
-            
-          
-           
-            
+            <Button
+              className="w-full gap-2"
+              variant="outline"
+              action="secondary"
+            >
+              <ButtonText>Logout</ButtonText>
+              <ButtonIcon as={LogOut} />
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </>
   );
 }
-
-export default Sidebar;
+export default Example;
