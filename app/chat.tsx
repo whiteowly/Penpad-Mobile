@@ -253,7 +253,7 @@
       import { Pressable } from '@/components/ui/pressable';
       import { app, auth } from '../firebaseConfig';
   import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, addDoc, getDoc } from 'firebase/firestore';
-      import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+      import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
       import * as ImagePicker from 'expo-image-picker';
       import { useLocalSearchParams, router } from 'expo-router';
       import { ScrollView, Image, View, Platform } from 'react-native';
@@ -262,6 +262,8 @@
       import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
      import { ArrowLeftIcon, PaperclipIcon, ShareIcon } from '@/components/ui/icon';
       import { KeyboardAvoidingView } from 'react-native';
+     import { SendHorizonal, SendHorizontal } from 'lucide-react-native';
+    
       type Params = {
         uid?: string; // target user id passed in the route
       };
@@ -281,6 +283,46 @@
         const [targetUser, setTargetUser] = useState<{ username?: string; displayName?: string; photoURL?: string } | null>(null);
         const [messages, setMessages] = useState<Array<any>>([]);
         const [text, setText] = useState('');
+        // which message id is showing its timestamp (tapped)
+        const [expandedMessageId, setExpandedMessageId] = useState<string | null>(null);
+
+        // Helpers to parse and format timestamps
+        const toDate = (ts: any): Date | null => {
+          if (!ts) return null;
+          try {
+            if (typeof ts?.toDate === 'function') return ts.toDate();
+            if (ts && typeof ts.seconds === 'number') return new Date(ts.seconds * 1000);
+            if (typeof ts === 'number') return new Date(ts);
+            return new Date(String(ts));
+          } catch (e) {
+            return null;
+          }
+        };
+
+        // canonical day key for comparing message days (YYYY-MM-DD)
+        const getDayKey = (ts: any) => {
+          const d = toDate(ts);
+          if (!d) return '';
+          return d.toISOString().slice(0, 10);
+        };
+
+        const formatDateReadable = (ts: any) => {
+          const d = toDate(ts);
+          if (!d) return '';
+          const today = new Date();
+          const yesterday = new Date();
+          yesterday.setDate(today.getDate() - 1);
+          const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+          if (isSameDay(d, today)) return 'Today';
+          if (isSameDay(d, yesterday)) return 'Yesterday';
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
+        const formatTime = (ts: any) => {
+          const d = toDate(ts);
+          if (!d) return '';
+          return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        };
 
         const scrollRef = useRef<ScrollView | null>(null);
 
@@ -368,13 +410,67 @@
             const uri = result.assets?.[0]?.uri ?? (result as any).uri;
             if (!uri) return;
 
-            // fetch file and upload
+            // fetch file and upload. Some RN environments don't support `blob()`
+            // so we fall back to arrayBuffer -> Uint8Array. We also provide
+            // contentType metadata to Storage so server can infer file type.
             const resp = await fetch(uri);
-            const blob = await resp.blob();
+            const contentType = resp.headers?.get?.('Content-Type') ?? 'image/jpeg';
+            let uploadPayload: any;
+            try {
+              // preferred path for modern runtimes
+              uploadPayload = await resp.blob();
+            } catch (e) {
+              // fallback for environments where blob() isn't implemented
+              const buf = await resp.arrayBuffer();
+              uploadPayload = new Uint8Array(buf);
+            }
+
             const ts = Date.now();
             const fileRef = storageRef(storage, `chats/${chatId}/${ts}.jpg`);
-            await uploadBytes(fileRef, blob);
-            const url = await getDownloadURL(fileRef);
+
+            // Debug: log auth and upload details before starting
+            try {
+              console.log('DEBUG upload start', {
+                authUid: auth.currentUser?.uid ?? null,
+                chatId,
+                uri,
+                contentType,
+                size: uploadPayload?.size ?? uploadPayload?.length ?? null,
+                type: Object.prototype.toString.call(uploadPayload),
+              });
+            } catch (e) {
+              // ignore logging errors
+            }
+
+            // Use resumable upload to get richer error callbacks and progress events
+            const metadata = { contentType } as any;
+            const uploadTask = uploadBytesResumable(fileRef, uploadPayload, metadata);
+
+            // wrap the upload task in a promise so we can await and catch errors with more detail
+            const url: string = await new Promise((resolve, reject) => {
+              uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                  try {
+                    const progress = snapshot.totalBytes ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100 : null;
+                    console.log('DEBUG upload progress', { progress });
+                  } catch (e) {}
+                },
+                (uploadErr) => {
+                  // this error often contains useful info from the SDK/server
+                  console.error('DEBUG upload task error', uploadErr);
+                  reject(uploadErr);
+                },
+                async () => {
+                  try {
+                    const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    resolve(downloadUrl);
+                  } catch (e) {
+                    reject(e);
+                  }
+                }
+              );
+            });
 
             await addDoc(collection(db, 'chats', chatId, 'messages'), {
               fromUid: myUid,
@@ -383,9 +479,26 @@
               text: null,
               createdAt: serverTimestamp(),
             });
-          } catch (err) {
+          } catch (err: any) {
+            // Log full error to console for debugging
             console.error('Failed to pick/upload image', err);
-            alert('Could not send image.');
+
+            // Build a safe error payload to show to the user/developer
+            const safeErr = {
+              code: err?.code ?? null,
+              message: err?.message ?? String(err),
+              name: err?.name ?? null,
+              // firebase storage may include a serverResponse or serverResponseText
+              serverResponse: err?.serverResponse ?? err?.serverResponseText ?? null,
+            };
+
+            // Try to show a detailed alert so the developer can copy the error
+            try {
+              alert(`Could not send image:\n${JSON.stringify(safeErr, null, 2)}`);
+            } catch (e) {
+              // fallback to simple message if stringify/alert fails
+              alert(`Could not send image: ${safeErr.message}`);
+            }
           }
         };
 
@@ -459,27 +572,58 @@
               <Divider className="my-[1px] w-full" />
 
               <ScrollView ref={scrollRef} className="mt-3" contentContainerStyle={{ paddingBottom: 240 }} keyboardShouldPersistTaps="handled">
-                <VStack space="sm">
-                  {messages.map((m) => {
+                <VStack space="none">
+                  {messages.map((m, idx) => {
                     const isMe = m.fromUid === myUid;
+                    const prev = idx > 0 ? messages[idx - 1] : null;
+                    const prevDay = prev ? getDayKey(prev.createdAt) : null;
+                    const thisDay = getDayKey(m.createdAt);
+                    const showDateSeparator = prevDay !== thisDay;
                     return (
-                      <HStack key={m.id} className={`items-start ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
-                        {!isMe && (
-                          <Avatar size="sm">
-                            {targetUser?.photoURL ? (
-                              <AvatarImage source={{ uri: targetUser.photoURL }} alt="avatar" />
-                            ) : (
-                              <AvatarFallbackText>{targetUser?.displayName ?? targetUser?.username ?? '?'}</AvatarFallbackText>
-                            )}
-                          </Avatar>
-                        )}
-                        <Box className={`${isMe ? 'bg-primary-500 text-white' : 'bg-background-50'} rounded-xl px-3 py-2 max-w-[75%]` }>
-                          {m.text ? <Text className={`${isMe ? 'text-white' : ''}`}>{m.text}</Text> : null}
-                          {m.mediaUrl ? (
-                            <Image source={{ uri: m.mediaUrl }} style={{ width: 200, height: 200, borderRadius: 8, marginTop: 6 }} />
-                          ) : null}
-                        </Box>
-                      </HStack>
+                      <React.Fragment key={m.id}>
+                        {showDateSeparator ? (
+                          <Box className="w-full items-center my-2">
+                            <Text className="text-xs text-typography-300">{formatDateReadable(m.createdAt)}</Text>
+                          </Box>
+                        ) : null}
+
+                        <HStack className={`items-start ${isMe ? 'justify-end' : 'justify-start'} mb-2`}>
+                          {!isMe && (
+                            <Avatar size="sm">
+                              {targetUser?.photoURL ? (
+                                <AvatarImage source={{ uri: targetUser.photoURL }} alt="avatar" />
+                              ) : (
+                                <AvatarFallbackText>{targetUser?.displayName ?? targetUser?.username ?? '?'}</AvatarFallbackText>
+                              )}
+                            </Avatar>
+                          )}
+
+                          {/* message bubble */}
+                          {isMe ? (
+                            <Pressable
+                              onPress={() => {
+                                setExpandedMessageId((prev) => (prev === m.id ? null : m.id));
+                              }}
+                            >
+                              <Box className={`${isMe ? (colorScheme === 'dark' ? 'bg-gray-200 text-black' : 'bg-black text-white') : 'bg-background-50'} rounded-xl px-3 py-2 ` }>
+                                {m.text ? <Text className={`${isMe ? (colorScheme === 'dark' ? 'text-black' : 'text-white') : ''}`}>{m.text}</Text> : null}
+                                {m.mediaUrl ? (
+                                  <Image source={{ uri: m.mediaUrl }} style={{ width: 200, height: 200, borderRadius: 8, marginTop: 6 }} />
+                                ) : null}
+                                <Text className="mt-1 text-xs text-typography-300">{formatTime(m.createdAt)}</Text>
+                              </Box>
+                            </Pressable>
+                          ) : (
+                            <Box className={`${isMe ? (colorScheme === 'dark' ? 'bg-gray-200 text-black' : 'bg-black text-white') : 'bg-background-50'} rounded-xl px-3 py-2 max-w-[75%]` }>
+                              {m.text ? <Text className={`${isMe ? (colorScheme === 'dark' ? 'text-black' : 'text-white') : ''}`}>{m.text}</Text> : null}
+                              {m.mediaUrl ? (
+                                <Image source={{ uri: m.mediaUrl }} style={{ width: 200, height: 200, borderRadius: 8, marginTop: 6 }} />
+                              ) : null}
+                              <Text className="mt-1 text-xs text-typography-300">{formatTime(m.createdAt)}</Text>
+                            </Box>
+                          )}
+                        </HStack>
+                      </React.Fragment>
                     );
                   })}
                 </VStack>
@@ -488,15 +632,15 @@
               <Input
                 variant="rounded"
                 size="lg"
-                style={{ position: 'absolute', left: 16, right: 16, bottom: 80, zIndex: 50 }}
+                // style={{ position: 'absolute', left: 0, right: 16, bottom: 0, zIndex: 50 }}
               >
                 <HStack className="items-center">
                   <InputField placeholder="Message" value={text} onChangeText={setText} />
-                  <Button size="sm" variant="link" onPress={pickImageAndSend} className="ml-2 mr-2">
+                  {/* <Button size="sm" variant="link" onPress={pickImageAndSend} className="ml-2 mr-2">
                     <ButtonIcon as={PaperclipIcon} />
-                  </Button>
+                  </Button> */}
                   <Button size="md" onPress={sendMessage} className="ml-2">
-                    <ButtonIcon as={ShareIcon} />
+                    <ButtonIcon size="lg" as={SendHorizontal} />
                   </Button>
                 </HStack>
               </Input>

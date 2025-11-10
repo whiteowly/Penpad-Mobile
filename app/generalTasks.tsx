@@ -48,6 +48,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
+import { app, auth } from '../firebaseConfig';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
@@ -140,7 +141,7 @@ const Main = () => {
 
   // useUserTodos still provides db and auth state; we'll keep a local `todos` state
   // that subscribes to a separate `generalTodos` collection so General and Today are independent.
-  const { db, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+  const { db, activeUserId, isAuthenticated, lastError } = useUserTodos(todoHookOptions);
   const [todos, setTodos] = useState<TodoItem[]>([]);
 
   const sortedTodos = useMemo(() => {
@@ -647,6 +648,8 @@ const Main = () => {
         </Box>
 
         <Divider className="my-[1px] w-full" />
+
+        
 
         
 
