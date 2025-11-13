@@ -315,7 +315,7 @@ const ChatPage = () => {
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <Box className="flex-1 px-3" style={{ backgroundColor }}>
+        <Box className="flex-1 px-2" style={{ backgroundColor }}>
           <HStack className="items-center ">
             <Box className="items-start w-[56px]">
               <Button size="2xl" variant="link" onPress={() => router.back()}>
@@ -340,7 +340,7 @@ const ChatPage = () => {
           </HStack>
 
           <Divider className="my-[1px] w-full" />
-
+        <Box className='flex-1 px-0'>
           <ScrollView ref={scrollRef} className="mt-3" contentContainerStyle={{ paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
             <VStack space="none">
               {messages.map((m, idx) => {
@@ -393,19 +393,22 @@ const ChatPage = () => {
                 );
               })}
             </VStack>
+
           </ScrollView>
-     <Box className=" flex-1 px-3 items-center justify-end rounded-md">
+          </Box>
+          <Box className="">
           <Input 
             variant="rounded"
             size="lg"
-            style={{ position: 'absolute', left: 8, right: 8, bottom: 0, zIndex: 1, margin: 0, marginBottom: 0 }}
+            className='flex-1 px-2 items-center justify-end rounded-xl border-none bg-background-50'
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1, margin: 0, marginBottom: 0 }}
           >
-            <HStack className="items-center">
+            <HStack className="items-center flex-1 px-2 items-center justify-end rounded-md bg-background-50">
               <InputField placeholder="Message"  value={text} onChangeText={setText} />
               {/* <Button size="sm" variant="link" onPress={pickImageAndSend} className="ml-2 mr-2">
                     <ButtonIcon as={PaperclipIcon} /> 
                   </Button> */}
-              <Button size="2xl" variant="link" onPress={sendMessage} >
+              <Button size="2xl" variant="link" onPress={sendMessage} className="ml-2 bg-background-50">
                 <ButtonIcon size="2xl" as={SendHorizontal} />
               </Button>
             </HStack>
