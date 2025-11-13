@@ -192,7 +192,7 @@ const Main = () => {
               friends.map((f) => (
                 <Pressable
                   key={f.uid}
-                  onPress={() => router.push(`/chat?uid=${encodeURIComponent(f.uid)}` as any)}
+                  onPress={() => router.push(`/sharedtask?uid=${encodeURIComponent(f.uid)}` as any)}
                   className="mb-1 flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3"
                 >
                   <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>

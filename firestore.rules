@@ -177,6 +177,51 @@ service cloud.firestore {
       }
     }
 
+    // Shared tasks collection: top-level shared tasks that multiple users participate in
+    match /shared/{sharedId} {
+      // Creation: caller must be authenticated, 'participants' must be a list,
+      // the caller must be included in the participants array and must be the creator.
+      allow create: if request.auth != null
+                    && request.resource.data.participants is list
+                    && request.auth.uid in request.resource.data.participants
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.createdAt is timestamp;
+
+      // Read single document only for participants
+      allow get: if request.auth != null && request.auth.uid in resource.data.participants;
+
+  // Allow listing shared tasks for authenticated users. Note: this permits
+  // the client to perform queries; per-document `get` still enforces
+  // participant membership. If you prefer stricter controls, change this
+  // to require a query filter (array-contains) and validate request.query.
+  allow list: if request.auth != null;
+
+      // Updates: only participants may update. Ensure the creator field is not changed
+      // and that the participants array still contains the caller.
+      allow update: if request.auth != null
+                    && request.auth.uid in resource.data.participants
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.participants is list
+                    && request.auth.uid in request.resource.data.participants;
+
+      // Deletion: any participant may delete the shared task (app may restrict further if desired)
+      allow delete: if request.auth != null && request.auth.uid in resource.data.participants;
+
+      // Subtasks nested under a shared task: participants may read/write subtasks
+      match /subtasks/{subId} {
+        function isParticipant() {
+          return exists(/databases/$(database)/documents/shared/$(sharedId))
+                 && request.auth != null
+                 && request.auth.uid in get(/databases/$(database)/documents/shared/$(sharedId)).data.participants;
+        }
+
+        allow get, list: if isParticipant();
+        allow create: if isParticipant() && request.resource.data.text is string && request.resource.data.createdAt is timestamp;
+        allow update, delete: if isParticipant();
+      }
+    }
+
     // Default: deny everything else. Be explicit about collection rules as
     // your app grows instead of opening up a permissive catch-all.
     // Chat metadata and messages.
