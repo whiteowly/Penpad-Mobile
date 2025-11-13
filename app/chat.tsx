@@ -329,6 +329,13 @@ const ChatPage = () => {
               </Text>
             </Box>
             <Box className="items-end w-[56px]">
+              <Pressable onPress={() => {
+                if (targetUid) {
+                  router.push(`/frenProfile?uid=${encodeURIComponent(targetUid)}` as any);
+                } else {
+                  router.push('/frenProfile' as any);
+                }
+              }}>
               <Avatar size="md">
                 {targetUser?.photoURL ? (
                   <AvatarImage source={{ uri: targetUser.photoURL }} alt="avatar" />
@@ -336,6 +343,7 @@ const ChatPage = () => {
                   <AvatarFallbackText>{targetUser?.displayName ?? targetUser?.username ?? '?'}</AvatarFallbackText>
                 )}
               </Avatar>
+              </Pressable>
             </Box>
           </HStack>
 
@@ -398,10 +406,10 @@ const ChatPage = () => {
           </Box>
           <Box className="">
           <Input 
-            variant="rounded"
-            size="lg"
-            className='flex-1 px-2 items-center justify-end rounded-xl border-none bg-background-50'
-            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1, margin: 0, marginBottom: 0 }}
+            variant="underlined"
+            size="xl"
+            className='flex-1 px-2 items-center justify-end rounded-2xl bg-background-50'
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1, margin: 0, marginBottom: 0, borderWidth: 0, borderColor: 'transparent' }}
           >
             <HStack className="items-center flex-1 px-2 items-center justify-end rounded-md bg-background-50">
               <InputField placeholder="Message"  value={text} onChangeText={setText} />
