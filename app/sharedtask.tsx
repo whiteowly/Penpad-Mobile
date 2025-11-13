@@ -1,13 +1,11 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Box } from '@/components/ui/box';
-import { Heading } from '@/components/ui/heading';
 import { Text } from '@/components/ui/text';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Fab, FabIcon } from '@/components/ui/fab';
 import { AddIcon, CheckIcon, TrashIcon, Icon, ChevronUpIcon, ChevronDownIcon, ClockIcon } from '@/components/ui/icon';
-import Sidebar from './sidebar';
 import { Divider } from '@/components/ui/divider';
 import {
     Modal,
@@ -19,7 +17,7 @@ import {
 } from '@/components/ui/modal';
 import { Button, ButtonText, ButtonIcon } from '@/components/ui/button';
 import { Input, InputField } from '@/components/ui/input';
-import { ArrowLeft, ArrowLeftIcon } from 'lucide-react-native';
+import { ArrowLeft, ArrowLeftIcon, MessageCircleMore } from 'lucide-react-native';
 import {
     Checkbox,
     CheckboxIndicator,
@@ -27,9 +25,8 @@ import {
     CheckboxLabel,
 } from '@/components/ui/checkbox';
 import { VStack } from '@/components/ui/vstack';
-import { ScrollView, Platform, PanResponder, View } from 'react-native';
+import { ScrollView, PanResponder, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Pressable } from '@/components/ui/pressable';
@@ -123,8 +120,8 @@ const Main = () => {
     ).current;
 
     useEffect(() => {
+        // cleanup any remaining subcollection listeners on unmount
         return () => {
-            // cleanup any remaining subcollection listeners
             Object.values(subUnsubs.current).forEach((unsub) => {
                 try {
                     unsub && unsub();
@@ -151,9 +148,8 @@ const Main = () => {
     }, []);
 
     const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
-
+    // get user todo state and Firestore instance from shared hook
     const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
-
     const IS_SHARED = true; // this page operates on the top-level `shared` collection
 
     const [sharedTasks, setSharedTasks] = useState<TodoItem[]>([]);
@@ -883,10 +879,7 @@ const Main = () => {
                                                                     const text = subtaskInputs[todo.id] ?? '';
                                                                     const newId = await handleAddSubtask(todo.id, text);
                                                                     setSubtaskInputs((p) => ({ ...p, [todo.id]: '' }));
-                                                                    // if (newId) {
-                                                                    //   // open date picker so the user can set a reminder for the newly created subtask
-                                                                    //   setPickerState({ type: 'subtask', todoId: todo.id, subId: newId, initialDate: new Date(), initialSubText: text });
-                                                                    // }
+                                                                    
                                                                 }}>
                                                                     <ButtonText>Add</ButtonText>
                                                                 </Button>
@@ -899,7 +892,7 @@ const Main = () => {
                                         );
                                     })
                                 ) : (
-                                    <Text className="text-typography-500 self-center justify-center">Tap the add button to create your first Shared task.</Text>
+                                    <Text className="text-typography-500 self-center justify-center">Tap the add button to create your first task.</Text>
                                 )}
                             </VStack>
                         </ScrollView>
@@ -1029,6 +1022,19 @@ const Main = () => {
                     </Modal>
 
                     {/* Floating action button: fixed bottom-right */}
+                    <Fab
+                        style={{ position: 'absolute', right: 20, bottom: 96, zIndex: 50 }}
+                        size="xl"
+                        onPress={() => {
+                            if (!targetUid) {
+                                alert('No chat user selected');
+                                return;
+                            }
+                            router.push(`/chat?uid=${encodeURIComponent(String(targetUid))}` as any);
+                        }}
+                    >
+                        <FabIcon as={MessageCircleMore} />
+                    </Fab>
                     <Fab style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 50 }} size="xl" onPress={() => setShowModal(true)}>
                         <FabIcon as={AddIcon} />
                     </Fab>

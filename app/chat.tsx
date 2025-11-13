@@ -383,7 +383,7 @@ const ChatPage = () => {
                               setExpandedMessageId((prev) => (prev === m.id ? null : m.id));
                             }}
                           >
-                            <Box className={`${isMe ? (colorScheme === 'dark' ? 'bg-gray-200 text-black' : 'bg-background-500 text-white') : 'bg-background-50'} rounded-xl px-3 py-2`}>
+                            <Box className={`${isMe ? (colorScheme === 'dark' ? 'bg-gray-200 text-black' : 'bg-background-900 text-white') : 'bg-background-50'} rounded-xl px-3 py-2`}>
                               {m.text ? <Text className={`${isMe ? (colorScheme === 'dark' ? 'text-black' : 'text-white') : ''}`}>{m.text}</Text> : null}
                               {m.mediaUrl ? (
                                 <Image source={{ uri: m.mediaUrl }} style={{ width: 200, height: 200, borderRadius: 8, marginTop: 6 }} />
