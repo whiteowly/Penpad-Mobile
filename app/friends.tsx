@@ -29,7 +29,7 @@ import {
 } from 'firebase/firestore';
 import { normalizeUsername } from '@/lib/usernames';
 import { useEffect, useMemo, useState } from 'react';
-import { HStack } from '@/components/ui/hstack';
+// removed duplicate Pressable import from hstack to avoid conflicts
 import {
   Avatar,
   AvatarFallbackText,
@@ -183,16 +183,20 @@ const Main = () => {
        
 
         <ScrollView className="mt-3" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
-          <Box>  {friends.length === 0 ? (
-            <Box className="items-center justify-center flex-0">
-              <Text className="text-muted">You have no friends yet</Text>
-            </Box>
-          ) : (
-            friends.map((f) => (
-              <VStack key={f.uid} className="mb-1">
-              <HStack key={f.uid} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
-                <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
-                <Pressable onPress={() => router.push(`/chat?uid=${encodeURIComponent(f.uid)}` as any)}>
+          <Box>
+            {friends.length === 0 ? (
+              <Box className="items-center justify-center flex-0">
+                <Text className="text-muted">You have no friends yet</Text>
+              </Box>
+            ) : (
+              friends.map((f) => (
+                <Pressable
+                  key={f.uid}
+                  onPress={() => router.push(`/sharedtask?uid=${encodeURIComponent(f.uid)}` as any)}
+                  className="mb-1 flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3"
+                >
+                  <Text size="lg">{f.displayName ?? f.username ?? f.uid}</Text>
+
                   <Avatar size="md">
                     {f.photoURL ? (
                       <AvatarImage source={{ uri: f.photoURL }} alt="Profile avatar" />
@@ -201,11 +205,9 @@ const Main = () => {
                     )}
                   </Avatar>
                 </Pressable>
-              </HStack>
-      
-              </VStack>
-            ))
-          )}</Box>
+              ))
+            )}
+          </Box>
         </ScrollView>
         <Fab
           placement="bottom right"
