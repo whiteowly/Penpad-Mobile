@@ -140,7 +140,7 @@ const Main = () => {
 
   const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
-  // top-level Firestore instance for general tasks
+  // top-level Firestore instance for user-scoped general tasks
   const db = useMemo(() => getFirestore(app), []);
   const [generalTodos, setGeneralTodos] = useState<TodoItem[]>([]);
 
@@ -148,11 +148,15 @@ const Main = () => {
     return [...generalTodos].sort((a, b) => Number(a.completed) - Number(b.completed));
   }, [generalTodos]);
 
-  // Subscribe to top-level `generalTodos` collection for real-time updates
+  // Subscribe to per-user `generalTodos` collection for real-time updates
   useEffect(() => {
-    if (!db) return;
-    // only allow listing when authenticated — errors will be handled by handleLoadError
-    const col = collection(db, 'generalTodos');
+    const currentUid = auth.currentUser?.uid ?? null;
+    if (!db || !currentUid) {
+      setGeneralTodos([]);
+      return;
+    }
+
+    const col = collection(db, 'users', currentUid, 'generalTodos');
     const q = query(col, orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(
       q,
@@ -164,7 +168,6 @@ const Main = () => {
             text: typeof data.text === 'string' ? data.text : '',
             completed: Boolean(data.completed),
             createdAt: (data as any).createdAt ?? null,
-            // keep createdBy for ownership checks if needed
             createdBy: (data as any).createdBy ?? null,
           } as unknown as TodoItem;
         });
@@ -193,7 +196,7 @@ const Main = () => {
 
     try {
       setIsSaving(true);
-      const todoRef = await addDoc(collection(db, 'generalTodos'), {
+      const todoRef = await addDoc(collection(db, 'users', currentUid, 'generalTodos'), {
         text: trimmedValue,
         completed: false,
         createdAt: serverTimestamp(),
@@ -204,7 +207,7 @@ const Main = () => {
       for (const s of newSubtasks) {
         const t = s.trim();
         if (!t) continue;
-        await addDoc(collection(db, 'generalTodos', todoRef.id, 'subtasks'), {
+        await addDoc(collection(db, 'users', currentUid, 'generalTodos', todoRef.id, 'subtasks'), {
           text: t,
           completed: false,
           createdAt: serverTimestamp(),
@@ -245,7 +248,7 @@ const Main = () => {
     }
 
     try {
-      const todoRef = doc(db, 'generalTodos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       const willComplete = !todo.completed;
 
       await updateDoc(todoRef, { completed: willComplete, updatedAt: serverTimestamp() });
@@ -290,7 +293,7 @@ const Main = () => {
 
     try {
       setDeletingId(todo.id);
-      const todoRef = doc(db, 'generalTodos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       await deleteDoc(todoRef);
     } catch (error) {
       console.error('Failed to delete task', error);
@@ -309,7 +312,7 @@ const Main = () => {
 
     try {
       setDeletingId(subId);
-      const subRef = doc(db, 'generalTodos', todoId, 'subtasks', subId);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', subId);
       await deleteDoc(subRef);
     } catch (error) {
       console.error('Failed to delete subtask', error);
@@ -337,7 +340,7 @@ const Main = () => {
     if (!currentUid) return;
 
     // subscribe to subtasks for real-time updates
-    const subCol = collection(db, 'generalTodos', todoId, 'subtasks');
+    const subCol = collection(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks');
     const q = query(subCol, orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(
       q,
@@ -370,7 +373,7 @@ const Main = () => {
     const t = text.trim();
     if (!t) return null;
     try {
-      const ref = await addDoc(collection(db, 'generalTodos', todoId, 'subtasks'), {
+      const ref = await addDoc(collection(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks'), {
         text: t,
         completed: false,
         createdAt: serverTimestamp(),
@@ -390,7 +393,7 @@ const Main = () => {
     }
 
     try {
-      const subRef = doc(db, 'generalTodos', todoId, 'subtasks', sub.id);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { completed: !sub.completed, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('Failed to update subtask', error);
@@ -416,7 +419,7 @@ const Main = () => {
     }
 
     try {
-      const todoRef = doc(db, 'generalTodos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       await updateDoc(todoRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save todo edit', err);
@@ -445,7 +448,7 @@ const Main = () => {
     }
 
     try {
-      const subRef = doc(db, 'generalTodos', todoId, 'subtasks', sub.id);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save subtask edit', err);
@@ -531,17 +534,17 @@ const Main = () => {
         else if (delta < 0) msg = `You completed ${Math.abs(delta)} fewer tasks than the previous month.`;
         else msg = `You completed the same number of tasks as the month before.`;
 
-        // delete generalTodos and their subtasks
-        const todosCol = collection(db, 'generalTodos');
+        // delete this user's generalTodos and their subtasks
+        const todosCol = collection(db, 'users', currentUid, 'generalTodos');
         const todosSnap = await getDocs(todosCol);
         const deletes: Promise<any>[] = [];
         for (const td of todosSnap.docs) {
-          const subsCol = collection(db, 'generalTodos', td.id, 'subtasks');
+          const subsCol = collection(db, 'users', currentUid, 'generalTodos', td.id, 'subtasks');
           const subsSnap = await getDocs(subsCol);
           for (const s of subsSnap.docs) {
-            deletes.push(deleteDoc(doc(db, 'generalTodos', td.id, 'subtasks', s.id)));
+            deletes.push(deleteDoc(doc(db, 'users', currentUid, 'generalTodos', td.id, 'subtasks', s.id)));
           }
-          deletes.push(deleteDoc(doc(db, 'generalTodos', td.id)));
+          deletes.push(deleteDoc(doc(db, 'users', currentUid, 'generalTodos', td.id)));
         }
         await Promise.all(deletes);
 

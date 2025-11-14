@@ -241,6 +241,13 @@ const Main = () => {
 
       // remove the request
       await deleteDoc(doc(db, 'users', uid, 'friendRequests', requestId));
+      // also remove the sender's outgoing pending record so it disappears from their pending list
+      try {
+        await deleteDoc(doc(db, 'users', fromUid, 'sentRequests', uid));
+      } catch (e) {
+        // best-effort: if this fails, don't block the accept flow
+        console.error('Failed to remove sender sentRequest after accept', fromUid, e);
+      }
     } catch (err) {
       console.error('Failed to accept friend request', err);
     }
@@ -249,7 +256,17 @@ const Main = () => {
   const rejectRequest = async (requestId: string) => {
     if (!uid) return;
     try {
+      // fetch the request to find the sender uid so we can clean up their sentRequests entry
+      const reqSnap = await getDoc(doc(db, 'users', uid, 'friendRequests', requestId));
+      const fromUid = reqSnap.exists() ? (reqSnap.data() as any).fromUid : null;
       await deleteDoc(doc(db, 'users', uid, 'friendRequests', requestId));
+      if (fromUid) {
+        try {
+          await deleteDoc(doc(db, 'users', fromUid, 'sentRequests', uid));
+        } catch (e) {
+          console.error('Failed to remove sender sentRequest after reject', fromUid, e);
+        }
+      }
     } catch (err) {
       console.error('Failed to reject friend request', err);
     }

@@ -890,9 +890,7 @@ const Main = () => {
 
 
 
-                                                    <Pressable className="ml-3 rounded-full p-2" onPress={() => openShareModal(todo.id)} accessibilityLabel="Share task">
-                                                        <Icon as={AddIcon} size="lg" className="text-primary-600" />
-                                                    </Pressable>
+                                                   
 
                                                     <Pressable className="ml-3 rounded-full p-2" onPress={() => setPendingDeleteTodoId(todo.id)} disabled={deletingId === todo.id} accessibilityLabel="Delete task">
                                                         <Icon as={TrashIcon} size="lg" className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'}`} />
@@ -1036,30 +1034,7 @@ const Main = () => {
                         </ModalContent>
                     </Modal>
 
-                    <Modal isOpen={shareModalVisible} onClose={closeShareModal} size="md">
-                        <ModalBackdrop />
-                        <ModalContent>
-                            <ModalHeader className="flex-col items-center gap-0.5">
-                                <Text style={{ fontFamily: 'Poppins_600SemiBold' }} size="xl">Share Task</Text>
-                                <Divider className="my-[5px] w-full" />
-                            </ModalHeader>
-                            <ModalBody>
-                                <Text className="text-typography-500 mb-2">Enter the friend's user id (UID) to share this task with.</Text>
-                                <Input variant="outline" size="md">
-                                    <InputField placeholder="Friend UID" value={shareFriendUid} onChangeText={setShareFriendUid} autoFocus />
-                                </Input>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button variant="outline" action="secondary" className="mr-3" onPress={closeShareModal}>
-                                    <ButtonText>Cancel</ButtonText>
-                                </Button>
-                                <Button onPress={handleConfirmShare} isDisabled={!shareFriendUid.trim()}>
-                                    <ButtonText>Share</ButtonText>
-                                </Button>
-                            </ModalFooter>
-                        </ModalContent>
-                    </Modal>
-
+                    
 
 
                     <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg">
