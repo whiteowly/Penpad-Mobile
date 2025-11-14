@@ -47,7 +47,9 @@ import {
   onSnapshot,
   query,
   orderBy,
+  getFirestore,
 } from 'firebase/firestore';
+import { app, auth } from '../firebaseConfig';
 import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 
@@ -138,16 +140,55 @@ const Main = () => {
 
   const todoHookOptions = useMemo(() => ({ onError: handleLoadError }), [handleLoadError]);
 
-  const { db, todos, activeUserId, isAuthenticated } = useUserTodos(todoHookOptions);
+  // top-level Firestore instance for user-scoped general tasks
+  const db = useMemo(() => getFirestore(app), []);
+  const [generalTodos, setGeneralTodos] = useState<TodoItem[]>([]);
 
-  const sortedTodos = useMemo(() => {
-    return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
-  }, [todos]);
+  const sortedGeneralTodos = useMemo(() => {
+    return [...generalTodos].sort((a, b) => Number(a.completed) - Number(b.completed));
+  }, [generalTodos]);
+
+  // Subscribe to per-user `generalTodos` collection for real-time updates
+  useEffect(() => {
+    const currentUid = auth.currentUser?.uid ?? null;
+    if (!db || !currentUid) {
+      setGeneralTodos([]);
+      return;
+    }
+
+    const col = collection(db, 'users', currentUid, 'generalTodos');
+    const q = query(col, orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: TodoItem[] = snapshot.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            id: d.id,
+            text: typeof data.text === 'string' ? data.text : '',
+            completed: Boolean(data.completed),
+            createdAt: (data as any).createdAt ?? null,
+            createdBy: (data as any).createdBy ?? null,
+          } as unknown as TodoItem;
+        });
+        setGeneralTodos(items);
+      },
+      (err) => {
+        console.error('Failed to load general todos', err);
+        handleLoadError(err, 'Failed to load general tasks.');
+      }
+    );
+
+    return () => unsub();
+  }, [db, handleLoadError]);
+
+  const isAuthenticated = Boolean(auth.currentUser?.uid);
+  const currentUid = auth.currentUser?.uid ?? null;
 
   const handleAddTodo = async () => {
     const trimmedValue = inputValue.trim();
-    if (!trimmedValue || !activeUserId) {
-      if (!activeUserId) {
+    if (!trimmedValue || !currentUid) {
+      if (!currentUid) {
         alert('You need to be signed in to add tasks.');
       }
       return;
@@ -155,17 +196,18 @@ const Main = () => {
 
     try {
       setIsSaving(true);
-      const todoRef = await addDoc(collection(db, 'users', activeUserId, 'todos'), {
+      const todoRef = await addDoc(collection(db, 'users', currentUid, 'generalTodos'), {
         text: trimmedValue,
         completed: false,
         createdAt: serverTimestamp(),
+        createdBy: currentUid,
       });
 
       // create subtasks if any
       for (const s of newSubtasks) {
         const t = s.trim();
         if (!t) continue;
-        await addDoc(collection(db, 'users', activeUserId, 'todos', todoRef.id, 'subtasks'), {
+        await addDoc(collection(db, 'users', currentUid, 'generalTodos', todoRef.id, 'subtasks'), {
           text: t,
           completed: false,
           createdAt: serverTimestamp(),
@@ -173,12 +215,12 @@ const Main = () => {
       }
 
       try {
-        const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
+        const statsRef = doc(db, 'users', currentUid ?? 'unknown', 'stats', 'summary');
         await setDoc(statsRef, { totalCreated: increment(1) }, { merge: true });
         // also increment monthly-created counter for the current month
         try {
           const monthKey = getMonthKey(new Date());
-          const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+          const monthStatsRef = doc(db, 'users', currentUid ?? 'unknown', 'monthlyStats', monthKey);
           await setDoc(monthStatsRef, { totalCreated: increment(1) }, { merge: true });
         } catch (e) {
           console.error('Failed to update monthly created count', e);
@@ -200,25 +242,25 @@ const Main = () => {
   };
 
   const handleToggleTodo = async (todo: TodoItem) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('You need to be signed in to update tasks.');
       return;
     }
 
     try {
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       const willComplete = !todo.completed;
 
       await updateDoc(todoRef, { completed: willComplete, updatedAt: serverTimestamp() });
 
       if (willComplete) {
         try {
-          const statsRef = doc(db, 'users', activeUserId, 'stats', 'summary');
+          const statsRef = doc(db, 'users', currentUid, 'stats', 'summary');
           await setDoc(statsRef, { totalCompleted: increment(1) }, { merge: true });
           // update monthly completed counter
           try {
             const monthKey = getMonthKey(new Date());
-            const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+            const monthStatsRef = doc(db, 'users', currentUid, 'monthlyStats', monthKey);
             await setDoc(monthStatsRef, { totalCompleted: increment(1) }, { merge: true });
           } catch (e) {
             console.error('Failed to update monthly completed count', e);
@@ -230,7 +272,7 @@ const Main = () => {
         // if the todo was un-completed, decrement monthly completed counter (best-effort)
         try {
           const monthKey = getMonthKey(new Date());
-          const monthStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', monthKey);
+          const monthStatsRef = doc(db, 'users', currentUid, 'monthlyStats', monthKey);
           await setDoc(monthStatsRef, { totalCompleted: increment(-1) }, { merge: true });
         } catch (e) {
           // ignore
@@ -244,14 +286,14 @@ const Main = () => {
   };
 
   const handleDeleteTodo = async (todo: TodoItem) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('You need to be signed in to delete tasks.');
       return;
     }
 
     try {
       setDeletingId(todo.id);
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       await deleteDoc(todoRef);
     } catch (error) {
       console.error('Failed to delete task', error);
@@ -263,14 +305,14 @@ const Main = () => {
   };
 
   const handleDeleteSubtask = async (todoId: string, subId: string) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('You need to be signed in to delete subtasks.');
       return;
     }
 
     try {
       setDeletingId(subId);
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', subId);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', subId);
       await deleteDoc(subRef);
     } catch (error) {
       console.error('Failed to delete subtask', error);
@@ -295,10 +337,10 @@ const Main = () => {
 
     setExpandedMap((prev) => ({ ...prev, [todoId]: true }));
 
-    if (!activeUserId) return;
+    if (!currentUid) return;
 
     // subscribe to subtasks for real-time updates
-    const subCol = collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks');
+    const subCol = collection(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks');
     const q = query(subCol, orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(
       q,
@@ -324,14 +366,14 @@ const Main = () => {
   };
 
   const handleAddSubtask = async (todoId: string, text: string): Promise<string | null> => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to add subtasks');
       return null;
     }
     const t = text.trim();
     if (!t) return null;
     try {
-      const ref = await addDoc(collection(db, 'users', activeUserId, 'todos', todoId, 'subtasks'), {
+      const ref = await addDoc(collection(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks'), {
         text: t,
         completed: false,
         createdAt: serverTimestamp(),
@@ -345,13 +387,13 @@ const Main = () => {
   };
 
   const handleToggleSubtask = async (todoId: string, sub: SubtaskItem) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to update subtasks');
       return;
     }
 
     try {
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { completed: !sub.completed, updatedAt: serverTimestamp() });
     } catch (error) {
       console.error('Failed to update subtask', error);
@@ -365,7 +407,7 @@ const Main = () => {
   };
 
   const saveEditTodo = async (todo: TodoItem) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to edit tasks');
       return;
     }
@@ -377,7 +419,7 @@ const Main = () => {
     }
 
     try {
-      const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+      const todoRef = doc(db, 'users', currentUid, 'generalTodos', todo.id);
       await updateDoc(todoRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save todo edit', err);
@@ -394,7 +436,7 @@ const Main = () => {
   };
 
   const saveEditSubtask = async (todoId: string, sub: SubtaskItem) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to edit subtasks');
       return;
     }
@@ -406,7 +448,7 @@ const Main = () => {
     }
 
     try {
-      const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+      const subRef = doc(db, 'users', currentUid, 'generalTodos', todoId, 'subtasks', sub.id);
       await updateDoc(subRef, { text: newText, updatedAt: serverTimestamp() });
     } catch (err) {
       console.error('Failed to save subtask edit', err);
@@ -448,9 +490,9 @@ const Main = () => {
     return `${y}-${m}`;
   };
 
-  // Month-boundary check for todos: clear `todos` at month boundary and notify
+  // Month-boundary check for todos: clear `generalTodos` at month boundary and notify
   useEffect(() => {
-    if (!activeUserId) return;
+    if (!currentUid) return;
 
     const runResetCheck = async () => {
       try {
@@ -470,16 +512,16 @@ const Main = () => {
         const prevMonthKey = getMonthKey(finalizeMonthStart);
         const prevPrevMonthKey = getMonthKey(new Date(finalizeMonthStart.getFullYear(), finalizeMonthStart.getMonth() - 1, 1));
 
-        const metaRef = doc(db, 'users', activeUserId, 'stats', 'monthlyMeta');
+        const metaRef = doc(db, 'users', currentUid, 'stats', 'monthlyMeta');
         const metaSnap = await getDoc(metaRef);
         const lastProcessed = metaSnap.exists() ? (metaSnap.data() as any).lastProcessedMonth : null;
         if (lastProcessed === prevMonthKey) return;
 
-        const prevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevMonthKey);
+        const prevStatsRef = doc(db, 'users', currentUid, 'monthlyStats', prevMonthKey);
         const prevStatsSnap = await getDoc(prevStatsRef);
         const prevStats = prevStatsSnap.exists() ? (prevStatsSnap.data() as any) : { totalCompleted: 0 };
 
-        const prevPrevStatsRef = doc(db, 'users', activeUserId, 'monthlyStats', prevPrevMonthKey);
+        const prevPrevStatsRef = doc(db, 'users', currentUid, 'monthlyStats', prevPrevMonthKey);
         const prevPrevStatsSnap = await getDoc(prevPrevStatsRef);
         const prevPrevStats = prevPrevStatsSnap.exists() ? (prevPrevStatsSnap.data() as any) : { totalCompleted: 0 };
 
@@ -492,33 +534,33 @@ const Main = () => {
         else if (delta < 0) msg = `You completed ${Math.abs(delta)} fewer tasks than the previous month.`;
         else msg = `You completed the same number of tasks as the month before.`;
 
-        // delete todos and their subtasks
-        const todosCol = collection(db, 'users', activeUserId, 'todos');
+        // delete this user's generalTodos and their subtasks
+        const todosCol = collection(db, 'users', currentUid, 'generalTodos');
         const todosSnap = await getDocs(todosCol);
         const deletes: Promise<any>[] = [];
         for (const td of todosSnap.docs) {
-          const subsCol = collection(db, 'users', activeUserId, 'todos', td.id, 'subtasks');
+          const subsCol = collection(db, 'users', currentUid, 'generalTodos', td.id, 'subtasks');
           const subsSnap = await getDocs(subsCol);
           for (const s of subsSnap.docs) {
-            deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'todos', td.id, 'subtasks', s.id)));
+            deletes.push(deleteDoc(doc(db, 'users', currentUid, 'generalTodos', td.id, 'subtasks', s.id)));
           }
-          deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'todos', td.id)));
+          deletes.push(deleteDoc(doc(db, 'users', currentUid, 'generalTodos', td.id)));
         }
         await Promise.all(deletes);
 
-  await setDoc(metaRef, { lastProcessedMonth: prevMonthKey }, { merge: true });
+        await setDoc(metaRef, { lastProcessedMonth: prevMonthKey }, { merge: true });
 
-  // reset the global summary completed count so Profile/computed completedCount restarts
-  await setDoc(doc(db, 'users', activeUserId, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
+        // reset the global summary completed count so Profile/computed completedCount restarts
+        await setDoc(doc(db, 'users', currentUid, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
 
-  await sendImmediateNotification('Monthly Summary', msg);
+        await sendImmediateNotification('Monthly Summary', msg);
       } catch (err) {
         console.error('Tasks month reset failed', err);
       }
     };
 
     runResetCheck();
-  }, [activeUserId, db]);
+  }, [currentUid, db]);
 
   const cancelNotification = async (identifier: string | null | undefined) => {
     if (!identifier) return;
@@ -530,12 +572,12 @@ const Main = () => {
   };
 
   const handleSetTodoReminder = async (todo: TodoItem, date: Date | null) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to set reminders');
       return;
     }
 
-    const todoRef = doc(db, 'users', activeUserId, 'todos', todo.id);
+    const todoRef = doc(db, 'users', currentUid, 'todos', todo.id);
 
     try {
       // cancel existing
@@ -555,12 +597,12 @@ const Main = () => {
   };
 
   const handleSetSubtaskReminder = async (todoId: string, sub: SubtaskItem, date: Date | null) => {
-    if (!activeUserId) {
+    if (!currentUid) {
       alert('Sign in to set reminders');
       return;
     }
 
-    const subRef = doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
+    const subRef = doc(db, 'users', currentUid, 'todos', todoId, 'subtasks', sub.id);
     try {
       await cancelNotification((sub as any).notificationId);
 
@@ -583,7 +625,7 @@ const Main = () => {
     if (!ps || !selectedDate) return; // cancelled
 
     if (ps.type === 'todo') {
-      const todo = todos.find((t) => t.id === ps.todoId);
+      const todo = generalTodos.find((t) => t.id === ps.todoId);
       if (todo) await handleSetTodoReminder(todo, selectedDate);
     } else {
       const subList = subtasksMap[ps.todoId] || [];
@@ -592,7 +634,7 @@ const Main = () => {
     }
   };
 
-  const pendingTodo = pendingDeleteTodoId ? todos.find((t) => t.id === pendingDeleteTodoId) : null;
+  const pendingTodo = pendingDeleteTodoId ? generalTodos.find((t) => t.id === pendingDeleteTodoId) : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
@@ -640,8 +682,8 @@ const Main = () => {
 
           <ScrollView className="mt-4" contentContainerStyle={{ paddingBottom: 160 }} keyboardShouldPersistTaps="handled">
             <VStack space="sm">
-              {todos.length ? (
-                sortedTodos.map((todo) => {
+              {generalTodos.length ? (
+                sortedGeneralTodos.map((todo) => {
                   const isExpanded = Boolean(expandedMap[todo.id]);
                   const hstackClass = `flex-row items-center justify-between bg-background-50 ${isExpanded ? 'rounded-t-xl' : 'rounded-xl'}  border-border-200 px-2 py-3`;
 
@@ -785,7 +827,7 @@ const Main = () => {
               setPickerState(null);
               if (!ps) return;
               if (ps.type === 'todo') {
-                const todo = todos.find((t) => t.id === ps.todoId);
+                const todo = generalTodos.find((t) => t.id === ps.todoId);
                 if (todo) await handleSetTodoReminder(todo, date);
               } else {
                 const subList = subtasksMap[ps.todoId] || [];

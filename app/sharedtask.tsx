@@ -153,6 +153,8 @@ const Main = () => {
     const IS_SHARED = true; // this page operates on the top-level `shared` collection
 
     const [sharedTasks, setSharedTasks] = useState<TodoItem[]>([]);
+    // cache of user profiles for quick lookup of who created a shared task
+    const [creators, setCreators] = useState<Record<string, { username?: string; displayName?: string; photoURL?: string }>>({});
 
     const sortedTodos = useMemo(() => {
         return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
@@ -168,22 +170,64 @@ const Main = () => {
             setSharedTasks([]);
             return;
         }
-        try {
-            const col = collection(db, 'shared');
-            const q = query(col, where('participants', 'array-contains', activeUserId), orderBy('createdAt', 'desc'));
-            const unsub = onSnapshot(
-                q,
-                (snapshot) => {
-                    const items: TodoItem[] = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-                    setSharedTasks(items);
-                },
-                (err) => console.error('Failed to load shared tasks', err)
-            );
-            return () => unsub();
-        } catch (err) {
-            console.error('Failed to subscribe to shared tasks', err);
-            setSharedTasks([]);
-        }
+            try {
+                const col = collection(db, 'shared');
+                const q = query(col, where('participants', 'array-contains', activeUserId));
+                const unsub = onSnapshot(
+                    q,
+                    (snapshot) => {
+                        let items: TodoItem[] = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+                            // if viewing a specific friend's shared page, filter to docs that include that friend
+                            if (targetUid) {
+                                items = items.filter((it: any) => Array.isArray((it as any).participants) && (it as any).participants.includes(targetUid));
+                            }
+                            // sort client-side by createdAt desc
+                            items.sort((a: any, b: any) => {
+                                const ta = (a.createdAt && (a.createdAt as any).toMillis ? (a.createdAt as any).toMillis() : (a.createdAt ? Number(a.createdAt) : 0));
+                                const tb = (b.createdAt && (b.createdAt as any).toMillis ? (b.createdAt as any).toMillis() : (b.createdAt ? Number(b.createdAt) : 0));
+                                return tb - ta;
+                            });
+                            setSharedTasks(items);
+
+                            // fetch creator profiles for any creators we don't have cached yet
+                            (async () => {
+                                try {
+                                    const missing = Array.from(new Set(items.map((it: any) => (it as any).createdBy).filter(Boolean))).filter((uid) => !(uid in creators));
+                                    if (missing.length === 0) return;
+                                    const fetched: Record<string, { username?: string; displayName?: string; photoURL?: string }> = {};
+                                    for (const uid of missing) {
+                                        try {
+                                            const uDoc = await getDoc(doc(db, 'users', uid));
+                                            if (uDoc.exists()) {
+                                                const d = uDoc.data() as any;
+                                                fetched[uid] = { username: d.username, displayName: d.displayName, photoURL: d.photoURL };
+                                            } else {
+                                                fetched[uid] = { username: undefined, displayName: undefined, photoURL: undefined };
+                                            }
+                                        } catch (e) {
+                                            console.error('Failed to fetch creator profile for', uid, e);
+                                            fetched[uid] = { username: undefined, displayName: undefined, photoURL: undefined };
+                                        }
+                                    }
+                                    setCreators((prev) => ({ ...prev, ...fetched }));
+                                } catch (e) {
+                                    console.error('Failed to fetch creators', e);
+                                }
+                            })();
+                    },
+                    (err) => {
+                        console.error('Failed to load shared tasks (fallback)', err);
+                        setSharedTasks([]);
+                    }
+                );
+
+                return () => {
+                    try { unsub && unsub(); } catch (_e) {}
+                };
+            } catch (err) {
+                console.error('Failed to subscribe to shared tasks', err);
+                setSharedTasks([]);
+            }
     }, [activeUserId, db]);
 
     const handleAddTodo = async () => {
@@ -199,10 +243,12 @@ const Main = () => {
             setIsSaving(true);
             // create in shared collection when on the shared page
             const rootCol = IS_SHARED ? collection(db, 'shared') : collection(db, 'users', activeUserId, 'todos');
+            const participants = IS_SHARED ? (targetUid ? [activeUserId, targetUid] : [activeUserId]) : undefined;
             const todoRef = await addDoc(rootCol, {
                 text: trimmedValue,
                 completed: false,
-                participants: IS_SHARED ? [activeUserId] : undefined,
+                participants,
+                createdBy: IS_SHARED ? activeUserId : undefined,
                 createdAt: serverTimestamp(),
             });
 
@@ -265,17 +311,22 @@ const Main = () => {
             alert('Sign in to share tasks');
             return;
         }
-        const friendUid = (shareFriendUid || '').trim();
-        if (!friendUid) {
-            alert('Enter a friend UID to share with');
-            return;
-        }
-        if (friendUid === activeUserId) {
-            alert('Cannot share a task with yourself');
+        const raw = (shareFriendUid || '').trim();
+        if (!raw) {
+            alert('Enter at least one friend UID to share with');
             return;
         }
         if (!sharingTodoId) {
             alert('No task selected to share');
+            return;
+        }
+
+        // allow multiple UIDs separated by commas or whitespace; create one shared doc per friend
+        const friendUids = raw.split(/[\s,]+/).map((s) => s.trim()).filter((s) => s.length > 0);
+        // remove duplicates and exclude self
+        const uniqueFriendUids = Array.from(new Set(friendUids)).filter((u) => u !== activeUserId);
+        if (uniqueFriendUids.length === 0) {
+            alert('No valid friend UIDs provided (cannot share with yourself).');
             return;
         }
 
@@ -287,20 +338,34 @@ const Main = () => {
                 return;
             }
 
-            // create a top-level shared task doc in `shared` so both participants see it
-            const shared = await addDoc(collection(db, 'shared'), {
-                text: todo.text ?? '',
-                createdBy: activeUserId,
-                participants: [activeUserId, friendUid],
-                originalTodoId: todo.id,
-                createdAt: serverTimestamp(),
-                completed: todo.completed ?? false,
-            });
+            const failures: string[] = [];
+            for (const fuid of uniqueFriendUids) {
+                try {
+                    await addDoc(collection(db, 'shared'), {
+                        text: todo.text ?? '',
+                        createdBy: activeUserId,
+                        participants: [activeUserId, fuid],
+                        originalTodoId: todo.id,
+                        createdAt: serverTimestamp(),
+                        completed: todo.completed ?? false,
+                    });
+                } catch (e) {
+                    console.error('Failed to create shared doc for', fuid, e);
+                    failures.push(fuid);
+                }
+            }
 
-            alert('Task shared successfully');
+            if (failures.length === 0) {
+                alert('Task shared successfully');
+            } else if (failures.length === uniqueFriendUids.length) {
+                alert('Failed to share task with any of the specified friends.');
+            } else {
+                alert(`Shared with some friends; failed for: ${failures.join(', ')}`);
+            }
+
             closeShareModal();
         } catch (err) {
-            console.error('Failed to share task', err);
+            console.error('Failed to share task batch', err);
             const message = err instanceof Error ? err.message : 'Unknown error';
             alert(`Could not share task. ${message}`);
         }
@@ -745,7 +810,7 @@ const Main = () => {
 
                         <Box className="flex-1 items-center">
                             <Text className="text-xl text-bold text-center" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
-                                {targetUser?.username ? `${targetUser.username}` : targetUser?.displayName ?? 'Chat'}
+                                {targetUser?.username ? `${targetUser.username}` : targetUser?.displayName ?? 'Shared Tasks'}
                             </Text>
                         </Box>
                         <Box className="items-end w-[56px]">
@@ -807,6 +872,12 @@ const Main = () => {
                                                                 <CheckboxLabel className={`ml-3 text-base ${todo.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>
                                                                     {todo.text}
                                                                 </CheckboxLabel>
+                                                                {/* show who added this task (if known) */}
+                                                                {((todo as any).createdBy) && (
+                                                                    <Text className="text-xs text-typography-500 mt-1 ml-3">
+                                                                        {((todo as any).createdBy) === activeUserId ? 'Added by you' : `Added by ${creators[(todo as any).createdBy]?.displayName ?? creators[(todo as any).createdBy]?.username ?? 'Unknown'}`}
+                                                                    </Text>
+                                                                )}
                                                             </Pressable>
                                                         )}
                                                     </Checkbox>
@@ -819,9 +890,7 @@ const Main = () => {
 
 
 
-                                                    <Pressable className="ml-3 rounded-full p-2" onPress={() => openShareModal(todo.id)} accessibilityLabel="Share task">
-                                                        <Icon as={AddIcon} size="lg" className="text-primary-600" />
-                                                    </Pressable>
+                                                   
 
                                                     <Pressable className="ml-3 rounded-full p-2" onPress={() => setPendingDeleteTodoId(todo.id)} disabled={deletingId === todo.id} accessibilityLabel="Delete task">
                                                         <Icon as={TrashIcon} size="lg" className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'}`} />
@@ -965,30 +1034,7 @@ const Main = () => {
                         </ModalContent>
                     </Modal>
 
-                    <Modal isOpen={shareModalVisible} onClose={closeShareModal} size="md">
-                        <ModalBackdrop />
-                        <ModalContent>
-                            <ModalHeader className="flex-col items-center gap-0.5">
-                                <Text style={{ fontFamily: 'Poppins_600SemiBold' }} size="xl">Share Task</Text>
-                                <Divider className="my-[5px] w-full" />
-                            </ModalHeader>
-                            <ModalBody>
-                                <Text className="text-typography-500 mb-2">Enter the friend's user id (UID) to share this task with.</Text>
-                                <Input variant="outline" size="md">
-                                    <InputField placeholder="Friend UID" value={shareFriendUid} onChangeText={setShareFriendUid} autoFocus />
-                                </Input>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button variant="outline" action="secondary" className="mr-3" onPress={closeShareModal}>
-                                    <ButtonText>Cancel</ButtonText>
-                                </Button>
-                                <Button onPress={handleConfirmShare} isDisabled={!shareFriendUid.trim()}>
-                                    <ButtonText>Share</ButtonText>
-                                </Button>
-                            </ModalFooter>
-                        </ModalContent>
-                    </Modal>
-
+                    
 
 
                     <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="lg">
