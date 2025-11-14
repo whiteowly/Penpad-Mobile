@@ -153,6 +153,8 @@ const Main = () => {
     const IS_SHARED = true; // this page operates on the top-level `shared` collection
 
     const [sharedTasks, setSharedTasks] = useState<TodoItem[]>([]);
+    // cache of user profiles for quick lookup of who created a shared task
+    const [creators, setCreators] = useState<Record<string, { username?: string; displayName?: string; photoURL?: string }>>({});
 
     const sortedTodos = useMemo(() => {
         return [...todos].sort((a, b) => Number(a.completed) - Number(b.completed));
@@ -186,6 +188,32 @@ const Main = () => {
                                 return tb - ta;
                             });
                             setSharedTasks(items);
+
+                            // fetch creator profiles for any creators we don't have cached yet
+                            (async () => {
+                                try {
+                                    const missing = Array.from(new Set(items.map((it: any) => (it as any).createdBy).filter(Boolean))).filter((uid) => !(uid in creators));
+                                    if (missing.length === 0) return;
+                                    const fetched: Record<string, { username?: string; displayName?: string; photoURL?: string }> = {};
+                                    for (const uid of missing) {
+                                        try {
+                                            const uDoc = await getDoc(doc(db, 'users', uid));
+                                            if (uDoc.exists()) {
+                                                const d = uDoc.data() as any;
+                                                fetched[uid] = { username: d.username, displayName: d.displayName, photoURL: d.photoURL };
+                                            } else {
+                                                fetched[uid] = { username: undefined, displayName: undefined, photoURL: undefined };
+                                            }
+                                        } catch (e) {
+                                            console.error('Failed to fetch creator profile for', uid, e);
+                                            fetched[uid] = { username: undefined, displayName: undefined, photoURL: undefined };
+                                        }
+                                    }
+                                    setCreators((prev) => ({ ...prev, ...fetched }));
+                                } catch (e) {
+                                    console.error('Failed to fetch creators', e);
+                                }
+                            })();
                     },
                     (err) => {
                         console.error('Failed to load shared tasks (fallback)', err);
@@ -844,6 +872,12 @@ const Main = () => {
                                                                 <CheckboxLabel className={`ml-3 text-base ${todo.completed ? 'line-through text-typography-400' : 'text-typography-900'}`}>
                                                                     {todo.text}
                                                                 </CheckboxLabel>
+                                                                {/* show who added this task (if known) */}
+                                                                {((todo as any).createdBy) && (
+                                                                    <Text className="text-xs text-typography-500 mt-1 ml-3">
+                                                                        {((todo as any).createdBy) === activeUserId ? 'Added by you' : `Added by ${creators[(todo as any).createdBy]?.displayName ?? creators[(todo as any).createdBy]?.username ?? 'Unknown'}`}
+                                                                    </Text>
+                                                                )}
                                                             </Pressable>
                                                         )}
                                                     </Checkbox>
