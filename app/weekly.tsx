@@ -552,6 +552,50 @@ const Main = () => {
         runResetCheck();
     }, [activeUserId, db]);
 
+    // Week-boundary check: run on Monday to clear last week's weeklyTodos and notify
+    useEffect(() => {
+        if (!activeUserId) return;
+
+        const runWeeklyReset = async () => {
+            try {
+                const now = new Date();
+                // run only on Mondays (start of ISO week)
+                if (now.getDay() !== 1) return;
+
+                const weekKey = `${now.getFullYear()}-W${getWeekNumber(now)}`;
+                const metaRef = doc(db, 'users', activeUserId, 'stats', 'weeklyMeta');
+                const metaSnap = await getDoc(metaRef);
+                const lastProcessed = metaSnap.exists() ? (metaSnap.data() as any).lastProcessedWeek : null;
+                if (lastProcessed === weekKey) return;
+
+                // delete weeklyTodos and their subtasks
+                const todosCol = collection(db, 'users', activeUserId, 'weeklyTodos');
+                const todosSnap = await getDocs(todosCol);
+                const deletes: Promise<any>[] = [];
+                for (const td of todosSnap.docs) {
+                    const subsCol = collection(db, 'users', activeUserId, 'weeklyTodos', td.id, 'subtasks');
+                    const subsSnap = await getDocs(subsCol);
+                    for (const s of subsSnap.docs) {
+                        deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'weeklyTodos', td.id, 'subtasks', s.id)));
+                    }
+                    deletes.push(deleteDoc(doc(db, 'users', activeUserId, 'weeklyTodos', td.id)));
+                }
+                await Promise.all(deletes);
+
+                await setDoc(metaRef, { lastProcessedWeek: weekKey }, { merge: true });
+
+                // optional: reset monthly summary (keep as-is)
+                await setDoc(doc(db, 'users', activeUserId, 'stats', 'summary'), { totalCompleted: 0 }, { merge: true });
+
+                await sendImmediateNotification('Weekly Summary', `Weekly tasks cleared for new week (${weekKey}).`);
+            } catch (err) {
+                console.error('Weekly reset failed', err);
+            }
+        };
+
+        runWeeklyReset();
+    }, [activeUserId, db]);
+
     const cancelNotification = async (identifier: string | null | undefined) => {
         if (!identifier) return;
         try {

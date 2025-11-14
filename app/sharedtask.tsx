@@ -168,22 +168,38 @@ const Main = () => {
             setSharedTasks([]);
             return;
         }
-        try {
-            const col = collection(db, 'shared');
-            const q = query(col, where('participants', 'array-contains', activeUserId), orderBy('createdAt', 'desc'));
-            const unsub = onSnapshot(
-                q,
-                (snapshot) => {
-                    const items: TodoItem[] = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-                    setSharedTasks(items);
-                },
-                (err) => console.error('Failed to load shared tasks', err)
-            );
-            return () => unsub();
-        } catch (err) {
-            console.error('Failed to subscribe to shared tasks', err);
-            setSharedTasks([]);
-        }
+            try {
+                const col = collection(db, 'shared');
+                const q = query(col, where('participants', 'array-contains', activeUserId));
+                const unsub = onSnapshot(
+                    q,
+                    (snapshot) => {
+                        let items: TodoItem[] = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+                            // if viewing a specific friend's shared page, filter to docs that include that friend
+                            if (targetUid) {
+                                items = items.filter((it: any) => Array.isArray((it as any).participants) && (it as any).participants.includes(targetUid));
+                            }
+                            // sort client-side by createdAt desc
+                            items.sort((a: any, b: any) => {
+                                const ta = (a.createdAt && (a.createdAt as any).toMillis ? (a.createdAt as any).toMillis() : (a.createdAt ? Number(a.createdAt) : 0));
+                                const tb = (b.createdAt && (b.createdAt as any).toMillis ? (b.createdAt as any).toMillis() : (b.createdAt ? Number(b.createdAt) : 0));
+                                return tb - ta;
+                            });
+                            setSharedTasks(items);
+                    },
+                    (err) => {
+                        console.error('Failed to load shared tasks (fallback)', err);
+                        setSharedTasks([]);
+                    }
+                );
+
+                return () => {
+                    try { unsub && unsub(); } catch (_e) {}
+                };
+            } catch (err) {
+                console.error('Failed to subscribe to shared tasks', err);
+                setSharedTasks([]);
+            }
     }, [activeUserId, db]);
 
     const handleAddTodo = async () => {
@@ -199,10 +215,12 @@ const Main = () => {
             setIsSaving(true);
             // create in shared collection when on the shared page
             const rootCol = IS_SHARED ? collection(db, 'shared') : collection(db, 'users', activeUserId, 'todos');
+            const participants = IS_SHARED ? (targetUid ? [activeUserId, targetUid] : [activeUserId]) : undefined;
             const todoRef = await addDoc(rootCol, {
                 text: trimmedValue,
                 completed: false,
-                participants: IS_SHARED ? [activeUserId] : undefined,
+                participants,
+                createdBy: IS_SHARED ? activeUserId : undefined,
                 createdAt: serverTimestamp(),
             });
 
@@ -265,17 +283,22 @@ const Main = () => {
             alert('Sign in to share tasks');
             return;
         }
-        const friendUid = (shareFriendUid || '').trim();
-        if (!friendUid) {
-            alert('Enter a friend UID to share with');
-            return;
-        }
-        if (friendUid === activeUserId) {
-            alert('Cannot share a task with yourself');
+        const raw = (shareFriendUid || '').trim();
+        if (!raw) {
+            alert('Enter at least one friend UID to share with');
             return;
         }
         if (!sharingTodoId) {
             alert('No task selected to share');
+            return;
+        }
+
+        // allow multiple UIDs separated by commas or whitespace; create one shared doc per friend
+        const friendUids = raw.split(/[\s,]+/).map((s) => s.trim()).filter((s) => s.length > 0);
+        // remove duplicates and exclude self
+        const uniqueFriendUids = Array.from(new Set(friendUids)).filter((u) => u !== activeUserId);
+        if (uniqueFriendUids.length === 0) {
+            alert('No valid friend UIDs provided (cannot share with yourself).');
             return;
         }
 
@@ -287,20 +310,34 @@ const Main = () => {
                 return;
             }
 
-            // create a top-level shared task doc in `shared` so both participants see it
-            const shared = await addDoc(collection(db, 'shared'), {
-                text: todo.text ?? '',
-                createdBy: activeUserId,
-                participants: [activeUserId, friendUid],
-                originalTodoId: todo.id,
-                createdAt: serverTimestamp(),
-                completed: todo.completed ?? false,
-            });
+            const failures: string[] = [];
+            for (const fuid of uniqueFriendUids) {
+                try {
+                    await addDoc(collection(db, 'shared'), {
+                        text: todo.text ?? '',
+                        createdBy: activeUserId,
+                        participants: [activeUserId, fuid],
+                        originalTodoId: todo.id,
+                        createdAt: serverTimestamp(),
+                        completed: todo.completed ?? false,
+                    });
+                } catch (e) {
+                    console.error('Failed to create shared doc for', fuid, e);
+                    failures.push(fuid);
+                }
+            }
 
-            alert('Task shared successfully');
+            if (failures.length === 0) {
+                alert('Task shared successfully');
+            } else if (failures.length === uniqueFriendUids.length) {
+                alert('Failed to share task with any of the specified friends.');
+            } else {
+                alert(`Shared with some friends; failed for: ${failures.join(', ')}`);
+            }
+
             closeShareModal();
         } catch (err) {
-            console.error('Failed to share task', err);
+            console.error('Failed to share task batch', err);
             const message = err instanceof Error ? err.message : 'Unknown error';
             alert(`Could not share task. ${message}`);
         }
@@ -745,7 +782,7 @@ const Main = () => {
 
                         <Box className="flex-1 items-center">
                             <Text className="text-xl text-bold text-center" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
-                                {targetUser?.username ? `${targetUser.username}` : targetUser?.displayName ?? 'Chat'}
+                                {targetUser?.username ? `${targetUser.username}` : targetUser?.displayName ?? 'Shared Tasks'}
                             </Text>
                         </Box>
                         <Box className="items-end w-[56px]">

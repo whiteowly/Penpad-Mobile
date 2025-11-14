@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "shared",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "participants",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESC"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASC"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
