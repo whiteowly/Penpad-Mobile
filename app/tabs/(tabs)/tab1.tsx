@@ -133,7 +133,7 @@ export default function Tab1() {
                 </InputSlot>
             </Input>
             <Box className="items-end w-full">
-              <Link href="/modal">
+              <Link onPress={() => router.push('/tabs/(tabs)/tab3')}>
                 <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
               </Link>
             </Box>

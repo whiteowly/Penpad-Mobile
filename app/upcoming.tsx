@@ -30,6 +30,9 @@ import {
 } from '@/components/ui/checkbox';
 import { HStack } from '@/components/ui/hstack';
 import { CheckIcon } from '@/components/ui/icon';
+import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
+import { VStack } from '@/components/ui/vstack';
+import { Pressable } from '@/components/ui/pressable';
 
 
 
@@ -40,7 +43,54 @@ const Main = () => {
   const [showModal, setShowModal] = React.useState(false);
   const [showModal2, setShowModal2] = React.useState(false);
   const [showModal3, setShowModal3] = React.useState(false);
-   const [values, setValues] = React.useState(['']);
+  const [values, setValues] = React.useState(['']);
+
+  // calendar state
+  const [viewDate, setViewDate] = React.useState(() => new Date()); // month being viewed
+  const [selectedDate, setSelectedDate] = React.useState<Date | null>(() => new Date());
+
+  // load user todos
+  const { todos } = useUserTodos();
+
+  // group todos by yyyy-mm-dd createdAt
+  const todosByDate = React.useMemo(() => {
+    const map: Record<string, TodoItem[]> = {};
+    for (const t of todos || []) {
+      const ts: any = t.createdAt ?? null;
+      let d: Date | null = null;
+      if (!ts) continue;
+      if (typeof ts.toDate === 'function') d = ts.toDate();
+      else if (typeof ts.toMillis === 'function') d = new Date(ts.toMillis());
+      else d = ts instanceof Date ? ts : new Date(ts);
+      if (!d || Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(t);
+    }
+    return map;
+  }, [todos]);
+
+  const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+  const monthMatrix = React.useMemo(() => {
+    const first = startOfMonth(viewDate);
+    const startWeekDay = first.getDay(); // 0-6 Sun-Sat
+    const daysInMonth = endOfMonth(viewDate).getDate();
+    const rows: Array<Array<number | null>> = [];
+    let cur = 1 - startWeekDay;
+    while (cur <= daysInMonth) {
+      const week: Array<number | null> = [];
+      for (let i = 0; i < 7; i++, cur++) {
+        if (cur < 1 || cur > daysInMonth) week.push(null);
+        else week.push(cur);
+      }
+      rows.push(week);
+    }
+    return rows;
+  }, [viewDate]);
+
+  const formatKey = (y: number, m: number, d: number) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
@@ -58,8 +108,66 @@ const Main = () => {
           <Box className="w-[56px]" />
         </Box>
           <Divider className="my-[1px] w-full" />
-          <Box className="flex-1 items-center justify-center">
-            <Text>Coming soon, stay tuned!</Text>
+          <Box className="flex-1">
+            <Box className="px-3 py-3">
+              <HStack className="items-center justify-between">
+                <Button variant="link" size="sm" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}>
+                  <ButtonText>Prev</ButtonText>
+                </Button>
+                <Text className="text-lg" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>{viewDate.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</Text>
+                <Button variant="link" size="sm" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}>
+                  <ButtonText>Next</ButtonText>
+                </Button>
+              </HStack>
+
+              <HStack className="mt-3">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
+                  <Box key={d} className="flex-1 items-center">
+                    <Text className="text-xs" style={{ color: Colors[colorScheme].text }}>{d}</Text>
+                  </Box>
+                ))}
+              </HStack>
+
+              <VStack className="mt-2" space="sm">
+                {monthMatrix.map((week, wi) => (
+                  <HStack key={wi} className="mb-2">
+                    {week.map((day, di) => {
+                      const isToday = day != null && (() => {
+                        const d = new Date();
+                        return viewDate.getFullYear() === d.getFullYear() && viewDate.getMonth() === d.getMonth() && day === d.getDate();
+                      })();
+                      const isSelected = selectedDate != null && day != null && selectedDate.getFullYear() === viewDate.getFullYear() && selectedDate.getMonth() === viewDate.getMonth() && selectedDate.getDate() === day;
+                      const key = day == null ? '' : formatKey(viewDate.getFullYear(), viewDate.getMonth(), day);
+                      const hasTodos = !!(day != null && todosByDate[key] && todosByDate[key].length > 0);
+                      return (
+                        <Pressable key={di} className="flex-1 items-center p-2" onPress={() => day && setSelectedDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))}>
+                          <Box style={{ width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? Colors[colorScheme].tint : 'transparent' }}>
+                            <Text style={{ color: isSelected ? Colors[colorScheme].background : (isToday ? Colors[colorScheme].tint : Colors[colorScheme].text) }}>{day ?? ''}</Text>
+                          </Box>
+                          {hasTodos && <Box className="mt-1" style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Colors[colorScheme].tint }} />}
+                        </Pressable>
+                      );
+                    })}
+                  </HStack>
+                ))}
+              </VStack>
+            </Box>
+
+            <Divider />
+
+            <Box className="px-4 py-3">
+              <Text className="text-base" style={{ color: Colors[colorScheme].text, marginBottom: 8 }}>{selectedDate ? selectedDate.toDateString() : 'Select a date'}</Text>
+              <VStack space="sm">
+                {(selectedDate ? (todosByDate[formatKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())] || []) : []).map((t) => (
+                  <Box key={t.id} className="bg-background-50 rounded-xl p-3 border-border-200">
+                    <Text style={{ color: Colors[colorScheme].text }}>{t.text}</Text>
+                  </Box>
+                ))}
+                {(!(selectedDate && todosByDate[formatKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())] && todosByDate[formatKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())].length > 0)) && (
+                  <Text className="text-typography-500">No tasks for this date.</Text>
+                )}
+              </VStack>
+            </Box>
           </Box>
          <Fab
               placement='bottom right'
