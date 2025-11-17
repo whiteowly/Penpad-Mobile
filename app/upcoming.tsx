@@ -109,7 +109,7 @@ const Main = () => {
         </Box>
           <Divider className="my-[1px] w-full" />
           <Box className="flex-1">
-            <Box className="px-3 py-3">
+            <Box className="px-2 py-3">
               <HStack className="items-center justify-between">
                 <Button variant="link" size="sm" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}>
                   <ButtonIcon as ={ChevronLeft} />
@@ -128,7 +128,7 @@ const Main = () => {
                 ))}
               </HStack>
 
-              <VStack className="mt-2" space="sm">
+              <VStack space="none">
                 {monthMatrix.map((week, wi) => (
                   <HStack key={wi} className="mb-2">
                     {week.map((day, di) => {
