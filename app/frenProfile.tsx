@@ -222,7 +222,8 @@ const Main = () => {
                                 {targetUser?.email}
                             </Text> */}
                     </VStack>
-                    <Button
+                    <Box className="w-full mt-6 px-4 gap-2">
+                   <Button
                         className="w-full gap-2"
                         variant="outline"
                         action="secondary"
@@ -230,7 +231,8 @@ const Main = () => {
                     >
                         <ButtonText>Remove</ButtonText>
                         <ButtonIcon as={UserRoundX} />
-                    </Button>
+                    </Button>  
+                    </Box>
                     <Modal
                         isOpen={showModal}
                         onClose={() => {

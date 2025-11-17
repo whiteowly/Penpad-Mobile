@@ -377,7 +377,7 @@ const ChatPage = () => {
                       </View>
 
                       <View style={{ flex: 1 }}>
-                        <View style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
+                        <View  style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
                           <Pressable
                             onPress={() => {
                               setExpandedMessageId((prev) => (prev === m.id ? null : m.id));
