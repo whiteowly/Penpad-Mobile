@@ -186,7 +186,7 @@ const Main = () => {
           <Box>
             {friends.length === 0 ? (
               <Box className="items-center justify-center flex-0">
-                <Text className="text-muted">You have no friends yet</Text>
+                <Text className="text-muted" style={{ color: Colors[colorScheme].text }}>You have no friends yet</Text>
               </Box>
             ) : (
               friends.map((f) => (

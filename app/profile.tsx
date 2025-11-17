@@ -189,12 +189,7 @@ const Profile = () => {
               <ButtonIcon as={ArrowLeftIcon} />
             </Button>
           </Box>
-          <Text
-            className="text-3xl text-bold"
-            style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
-          >
-            Profile
-          </Text>
+        
           <Box className="w-[56px]" />
         </Box>
 

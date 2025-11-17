@@ -13,7 +13,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, useColorScheme } from 'reac
 
 import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
-import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
 import { Colors } from '@/constants/Colors';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
@@ -44,6 +44,17 @@ export default function Tab1() {
 
     return unsubscribe;
   }, [auth]);
+
+  // If user is signed in, immediately redirect to the general tasks page.
+  useEffect(() => {
+    if (user) {
+      try {
+        router.replace('/generalTasks' as any);
+      } catch (e) {
+        // ignore navigation errors
+      }
+    }
+  }, [user, router]);
 
   const handleState = () => {
     setShowPassword((showState) => {
@@ -82,13 +93,7 @@ export default function Tab1() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <Center className="flex-1">
           <VStack space="sm" className="w-[80%]">
-        <Image
-                    source={iconImage}
-                    accessibilityLabel="PenPad logo"
-                    resizeMode="contain"
-                      size='2xl' 
-                      className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
-                  />
+        
         <Text
           className="text-3xl self-center text-bold" 
         >
@@ -96,69 +101,71 @@ export default function Tab1() {
         </Text>
         
         <Divider className='my-[20px] w-[100%]'/>
-        {!user && (
-          <Input 
-            variant="rounded"
-            size="xl"
-            isDisabled={false}
-            isInvalid={false}
-            isReadOnly={false}
-          >
-            <InputField
-              placeholder="Enter Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-            />
-          </Input>
-        )}
-        <Input 
-          variant="rounded"
-          size="xl"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-        >
-          <InputField placeholder="Enter Password" value={password} onChangeText={setPassword} type={showPassword ? 'text' : 'password'} />
-            <InputSlot className="pr-3" onPress={handleState}>
-                <InputIcon
-                  as={showPassword ? EyeIcon : EyeOffIcon}
-                  color={Colors[colorScheme ?? 'light'].text}
-                />
-            </InputSlot>
-        </Input>
-        <Box className="items-end w-full">
-          <Link href="/modal">
-            <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
-          </Link>
-        </Box>
-        
-        <Box className='items-center w-full rounded-xl'>
-          {statusMessage && (
-            <Text
-              className={`mb-3 text-center text-sm ${
-                statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
-              }`}
+        {!user ? (
+          <>
+            <Input 
+              variant="rounded"
+              size="xl"
+              isDisabled={false}
+              isInvalid={false}
+              isReadOnly={false}
             >
-              {statusMessage}
-            </Text>
-          )}
-          <Button
-            size="lg"
-            className="bg-primary-500 px-6 py-2 rounded-full"
-            variant='solid'
-            isDisabled={isSignInDisabled}
-            onPress={handleSignIn}
-          >
-            <ButtonText> Sign In </ButtonText>
-          </Button>
-        </Box>
-        <Box className='flex-row justify-center w-full'>
-          <Text className='text-sm text-typography-700'>New here? </Text>
-          <Link onPress={() => router.push('/tabs/(tabs)/tab2')}>
-            <LinkText className='text-sm text-primary-500'>Sign Up</LinkText>
-          </Link>
-        </Box>
+              <InputField
+                placeholder="Enter Email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+              />
+            </Input>
+            <Input 
+              variant="rounded"
+              size="xl"
+              isDisabled={false}
+              isInvalid={false}
+              isReadOnly={false}
+            >
+              <InputField placeholder="Enter Password" value={password} onChangeText={setPassword} type={showPassword ? 'text' : 'password'} />
+                <InputSlot className="pr-3" onPress={handleState}>
+                    <InputIcon
+                      as={showPassword ? EyeIcon : EyeOffIcon}
+                      color={Colors[colorScheme ?? 'light'].text}
+                    />
+                </InputSlot>
+            </Input>
+            <Box className="items-end w-full">
+              <Link href="/modal">
+                <LinkText className="text-primary-500 items-start">Forgot Password</LinkText>
+              </Link>
+            </Box>
+            
+            <Box className='items-center w-full rounded-xl'>
+              {statusMessage && (
+                <Text
+                  className={`mb-3 text-center text-sm ${
+                    statusVariant === 'error' ? 'text-error-600' : 'text-success-600'
+                  }`}
+                >
+                  {statusMessage}
+                </Text>
+              )}
+              <Button
+                size="lg"
+                className="bg-primary-500 px-6 py-2 rounded-full"
+                variant='solid'
+                isDisabled={isSignInDisabled}
+                onPress={handleSignIn}
+              >
+                <ButtonText> Sign In </ButtonText>
+              </Button>
+            </Box>
+            <Box className='flex-row justify-center w-full'>
+              <Text className='text-sm text-typography-700'>New here? </Text>
+              <Link onPress={() => router.push('/tabs/(tabs)/tab2')}>
+                <LinkText className='text-sm text-primary-500'>Sign Up</LinkText>
+              </Link>
+            </Box>
+          </>
+        ) : null}
 
           </VStack>
         </Center>
