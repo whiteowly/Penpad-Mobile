@@ -3,7 +3,6 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 const db = admin.firestore();
-
 // Callable function to check username availability. Uses Admin SDK so it bypasses client Firestore rules.
 exports.checkUsername = functions.https.onCall(async (data, context) => {
   const raw = (data && data.username) ? String(data.username) : '';
