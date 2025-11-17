@@ -33,7 +33,7 @@ import { CheckIcon } from '@/components/ui/icon';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 import { VStack } from '@/components/ui/vstack';
 import { Pressable } from '@/components/ui/pressable';
-
+import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 
 
 const Main = () => {
@@ -112,11 +112,11 @@ const Main = () => {
             <Box className="px-3 py-3">
               <HStack className="items-center justify-between">
                 <Button variant="link" size="sm" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}>
-                  <ButtonText>Prev</ButtonText>
+                  <ButtonIcon as ={ChevronLeft} />
                 </Button>
                 <Text className="text-lg" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>{viewDate.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</Text>
                 <Button variant="link" size="sm" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}>
-                  <ButtonText>Next</ButtonText>
+                  <ButtonIcon as ={ChevronRight} />
                 </Button>
               </HStack>
 
@@ -169,14 +169,14 @@ const Main = () => {
               </VStack>
             </Box>
           </Box>
-         <Fab
+         {/* <Fab
               placement='bottom right'
               size="xl"
               className="m-6"
               onPress={() => setShowModal(true)
                 }>
                 <FabIcon as={AddIcon} />
-            </Fab>
+            </Fab> */}
            <Modal
         isOpen={showModal}
         onClose={() => {
