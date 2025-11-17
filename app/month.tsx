@@ -559,16 +559,16 @@ const Main = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor }}>
       <View {...panResponder.panHandlers} style={{ flex: 1 }}>
         <Box className="flex-1 px-6" style={{ backgroundColor }}>
-        <Box className="flex-row items-center mb-4">
+         <Box className="flex-row items-center mb-4">
           <Box className="items-start w-[56px]">
             <Sidebar />
           </Box>
           <HStack space="xl" className="items-center justify-between flex-1 mb-2">
-                     <Text className="text-3xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
-                       Tasks
-                     </Text>
-                     <Text size="lg" className="text-typography-500">{getMonthAndDay()}</Text>
-                   </HStack>
+            <Text className="text-xl text-bold" style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}>
+              Tasks
+            </Text>
+            <Text size="lg" className="text-typography-500">{getMonthAndDay()}</Text>
+          </HStack>
           <Box className="w-[56px]" />
         </Box>
 
