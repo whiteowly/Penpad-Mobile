@@ -70,6 +70,7 @@ const Main = () => {
     const [incomingRequests, setIncomingRequests] = useState<Array<any>>([]);
     const [friends, setFriends] = useState<FriendDoc[]>([]);
     const [showModal, setShowModal] = React.useState(false);
+    const [removing, setRemoving] = useState(false);
     const me = auth.currentUser;
     const myUid = me?.uid ?? null;
     const scrollRef = useRef<ScrollView | null>(null);
@@ -180,10 +181,23 @@ const Main = () => {
     const removeFriend = async (friendUid: string) => {
         if (!uid) return;
         try {
+            setRemoving(true);
+            // remove friend entry from current user's friend list
             await deleteDoc(doc(db, 'users', uid, 'friends', friendUid));
-            await deleteDoc(doc(db, 'users', friendUid, 'friends', uid));
+            // remove reciprocal friend entry (best-effort)
+            try {
+                await deleteDoc(doc(db, 'users', friendUid, 'friends', uid));
+            } catch (e) {
+                console.warn('Failed to remove reciprocal friend entry', e);
+            }
+            // close modal and navigate to the friends page after removal
+            setShowModal(false);
+            try { router.replace('/friends' as any); } catch (e) { /* ignore navigation errors */ }
         } catch (err) {
             console.error('Failed to remove friend', err);
+        }
+        finally {
+            setRemoving(false);
         }
     };
 
@@ -222,7 +236,8 @@ const Main = () => {
                                 {targetUser?.email}
                             </Text> */}
                     </VStack>
-                    <Button
+                    <Box className="w-full mt-6 px-4 gap-2">
+                   <Button
                         className="w-full gap-2"
                         variant="outline"
                         action="secondary"
@@ -230,7 +245,8 @@ const Main = () => {
                     >
                         <ButtonText>Remove</ButtonText>
                         <ButtonIcon as={UserRoundX} />
-                    </Button>
+                    </Button>  
+                    </Box>
                     <Modal
                         isOpen={showModal}
                         onClose={() => {
@@ -256,9 +272,11 @@ const Main = () => {
                                     variant="outline"
                                     action="secondary"
                                     className="mr-1"
-                                    onPress={() => {
-                                        removeFriend(targetUid as string);
+                                    onPress={async () => {
+                                        if (!targetUid) return;
+                                        await removeFriend(targetUid as string);
                                     }}
+                                    isDisabled={removing}
                                 >
                                     <ButtonText>Yuh</ButtonText>
                                 </Button>

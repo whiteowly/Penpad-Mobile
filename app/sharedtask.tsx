@@ -85,12 +85,14 @@ const Main = () => {
     const [editingSubtaskKey, setEditingSubtaskKey] = useState<string | null>(null); // `${todoId}:${subId}`
     const [editingSubtaskText, setEditingSubtaskText] = useState('');
     const [messages, setMessages] = useState<Array<any>>([]);
+    const [chatLastSeen, setChatLastSeen] = useState<Record<string, any>>({});
     const [pickerState, setPickerState] = useState<
         | { type: 'todo'; todoId: string; initialDate: Date }
         | { type: 'subtask'; todoId: string; subId: string; initialDate: Date }
         | null
     >(null);
     const [targetUser, setTargetUser] = useState<{ username?: string; displayName?: string; photoURL?: string } | null>(null);
+    const targetUserPlaceholder = null; // placeholder, no-op (keeps nearby code layout)
     const me = auth.currentUser;
     const myUid = me?.uid ?? null;
     const scrollRef = useRef<ScrollView | null>(null);
@@ -132,16 +134,7 @@ const Main = () => {
         };
     }, []);
 
-    // request notification permissions when this screen mounts
-    useEffect(() => {
-        (async () => {
-            try {
-                await Notifications.requestPermissionsAsync();
-            } catch (err) {
-                console.warn('Notification permission request failed', err);
-            }
-        })();
-    }, []);
+    // (Notification device-token registration removed)
 
     const handleLoadError = useCallback((_error: unknown, message: string) => {
         alert(`Could not load tasks. ${message}`);
@@ -556,12 +549,95 @@ const Main = () => {
         const msgsCol = collection(db, 'chats', chatId, 'messages');
         const q = query(msgsCol, orderBy('createdAt', 'asc'));
         const unsub = onSnapshot(q, (snap) => {
-            setMessages(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+            const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+
+            // detect newly added messages
+            try {
+                const changes = snap.docChanges();
+                for (const ch of changes) {
+                    if (ch.type !== 'added') continue;
+                    const m = ch.doc.data() as any;
+                    const msgId = ch.doc.id;
+                    const createdBy = m.createdBy ?? null;
+                    // ignore our own messages
+                    if (!createdBy || createdBy === myUid) continue;
+
+                    // compute message timestamp in ms
+                    const msgTs = (m.createdAt && (m.createdAt as any).toMillis) ? (m.createdAt as any).toMillis() : (m.createdAt ? Number(m.createdAt) : Date.now());
+
+                    // get my lastSeen for this chat (if any) from chatLastSeen map
+                    const myLastSeenRaw = myUid ? chatLastSeen?.[myUid] : null;
+                    const myLastSeenMs = myLastSeenRaw ? (myLastSeenRaw.toMillis ? myLastSeenRaw.toMillis() : Number(myLastSeenRaw)) : null;
+
+                    // only notify if message is after my last seen timestamp (or if none recorded)
+                    if (myLastSeenMs && msgTs <= myLastSeenMs) continue;
+
+                    // schedule a local notification for the incoming message
+                    (async () => {
+                        try {
+                            await Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title: targetUser?.displayName ? `${targetUser.displayName}` : 'New message',
+                                    body: typeof m.text === 'string' ? m.text : 'New message',
+                                    data: { chatId, messageId: msgId },
+                                },
+                                trigger: null as any,
+                            });
+                        } catch (e) {
+                            console.error('Failed to send local notification for incoming message', e);
+                        }
+                    })();
+                }
+            } catch (e) {
+                console.error('Error while handling message changes for notifications', e);
+            }
+
+            setMessages(docs);
             // scroll to bottom in next tick
             setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
         });
         return () => unsub();
     }, [db, chatId]);
+
+    // subscribe to chat-level lastSeen map so we know when each participant last opened the chat
+    useEffect(() => {
+        if (!chatId) {
+            setChatLastSeen({});
+            return;
+        }
+        const chatDocRef = doc(db, 'chats', chatId);
+        const unsub = onSnapshot(chatDocRef, (snap) => {
+            if (!snap.exists()) {
+                setChatLastSeen({});
+                return;
+            }
+            const data = snap.data() as any;
+            setChatLastSeen((data && data.lastSeen) ? (data.lastSeen as Record<string, any>) : {});
+        }, (err) => {
+            console.error('Failed to subscribe to chat lastSeen', err);
+            setChatLastSeen({});
+        });
+        return () => unsub();
+    }, [db, chatId]);
+
+    const unreadCount = useMemo(() => {
+        if (!chatId) return 0;
+        // count messages from the other user with createdAt after my lastSeen recorded in Firestore
+        const others = messages.filter((m) => (m.createdBy ? m.createdBy !== myUid : true));
+        if (!others.length) return 0;
+        const myLastSeen = (() => {
+            if (!myUid) return null;
+            const raw = chatLastSeen?.[myUid];
+            if (!raw) return null;
+            return raw && (raw.toMillis ? raw.toMillis() : Number(raw));
+        })();
+        const count = others.filter((m) => {
+            const ca = (m.createdAt && (m.createdAt as any).toMillis) ? (m.createdAt as any).toMillis() : (m.createdAt ? Number(m.createdAt) : 0);
+            if (!myLastSeen) return true;
+            return ca > myLastSeen;
+        }).length;
+        return count;
+    }, [messages, chatLastSeen, chatId, myUid]);
 
     const startEditTodo = (todo: TodoItem) => {
         setEditingTodoId(todo.id);
@@ -820,7 +896,7 @@ const Main = () => {
                                 } else {
                                     router.push('/frenProfile' as any);
                                 }
-                            }}>
+                            }} style={{ position: 'relative' }}>
                                 <Avatar size="md">
                                     {targetUser?.photoURL ? (
                                         <AvatarImage source={{ uri: targetUser.photoURL }} alt="avatar" />
@@ -828,6 +904,8 @@ const Main = () => {
                                         <AvatarFallbackText>{targetUser?.displayName ?? targetUser?.username ?? '?'}</AvatarFallbackText>
                                     )}
                                 </Avatar>
+                                
+                               
                             </Pressable>
                         </Box>
                     </HStack>
@@ -1067,7 +1145,7 @@ const Main = () => {
                         </ModalContent>
                     </Modal>
 
-                    {/* Floating action button: fixed bottom-right */}
+                    
                     <Fab
                         style={{ position: 'absolute', right: 20, bottom: 96, zIndex: 50 }}
                         size="xl"
@@ -1076,11 +1154,23 @@ const Main = () => {
                                 alert('No chat user selected');
                                 return;
                             }
-                            router.push(`/chat?uid=${encodeURIComponent(String(targetUid))}` as any);
+                            // mark messages as seen (store lastSeen timestamp in Firestore) before navigating
+                            (async () => {
+                                try {
+                                    if (chatId && myUid) {
+                                        await setDoc(doc(db, 'chats', chatId), { lastSeen: { [myUid]: serverTimestamp() } }, { merge: true });
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to mark chat as seen in Firestore', e);
+                                } finally {
+                                    router.push(`/chat?uid=${encodeURIComponent(String(targetUid))}` as any);
+                                }
+                            })();
                         }}
                     >
                         <FabIcon as={MessageCircleMore} />
                     </Fab>
+                    
                     <Fab style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 50 }} size="xl" onPress={() => setShowModal(true)}>
                         <FabIcon as={AddIcon} />
                     </Fab>

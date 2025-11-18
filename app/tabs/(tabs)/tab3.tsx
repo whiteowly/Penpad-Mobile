@@ -50,13 +50,7 @@ export default function ForgotPassword() {
     >
       <Center className="flex-1">
         <VStack space="xs" className="w-[80%]">
-          <Image
-            source={iconImage}
-            accessibilityLabel="PenPad logo"
-            resizeMode="contain"
-            size='2xl'
-            className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
-          />
+          
           <Text
             className="text-3xl self-center text-bold"
           >

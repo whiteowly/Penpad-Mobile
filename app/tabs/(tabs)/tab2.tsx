@@ -13,19 +13,12 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import {
-  doc,
-  getFirestore,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore';
-// username reservation removed: no longer reserving usernames during signup.
 import { app } from '../../../firebaseConfig';
 import { useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
-import { Platform } from 'react-native';
+import { useColorScheme } from 'react-native';
 import {
   FormControl,
   FormControlLabel,
@@ -39,9 +32,6 @@ import {
 import { AlertCircleIcon } from '@/components/ui/icon';
 import React from 'react';
 import { Image } from '@/components/ui/image';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
-import { useColorScheme } from '@/components/useColorScheme';
-import { Spinner } from '@/components/ui/spinner';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,15 +51,11 @@ export default function Tab2() {
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const iconImage = require('../../../assets/images/logo1.png');
   const [statusVariant, setStatusVariant] = React.useState<'error' | 'success' | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
   const isSignUpDisabled =
     !email.trim() ||
     !username.trim() ||
     !password.trim() ||
     !confirmPassword.trim();
-
-  // final sign-up guard: require basic fields and not currently loading
-  const canSignUp = !isSignUpDisabled && !isLoading;
 
   const handlestate = () => {
     setShowPassword((showState) => {
@@ -83,8 +69,6 @@ export default function Tab2() {
     }
     setStatusMessage(null);
     setStatusVariant(null);
-
-    setIsLoading(true);
 
     if (password.length < 6) {
       setIsInvalid(true);
@@ -106,79 +90,23 @@ export default function Tab2() {
       return;
     }
     try {
-      const trimmedEmail = email.trim();
-      const normalizedEmail = trimmedEmail.toLowerCase();
-
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        normalizedEmail,
+        email,
         password
       );
       const user = userCredential.user;
-
-      const db = getFirestore(app);
-
-      // NOTE: username reservation removed — we no longer attempt to atomically
-      // reserve usernames during signup. The username field will simply be
-      // stored on the user doc below. If you want uniqueness guaranteed,
-      // reintroduce server-side checks (callable function) or Firestore
-      // reservation logic in a future change.
-
-      // Update profile displayName now that username is reserved
-      try {
-        await updateProfile(user, {
-          displayName: username,
-        });
-      } catch (profileErr) {
-        console.error('Failed to update profile displayName:', profileErr);
-        // cleanup: delete the created auth user if possible
-        try {
-          await user.delete();
-        } catch (delErr) {
-          console.error('Failed to delete user after profile update failure:', delErr);
-        }
-        setStatusVariant('error');
-        setStatusMessage('Failed to set up account. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Store profile metadata so password reset checks can find this user.
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            email: trimmedEmail,
-            emailLowerCase: normalizedEmail,
-            username: username.trim(),
-            createdAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (firestoreError) {
-        console.error('Failed to persist user profile:', firestoreError);
-        // cleanup: delete the created auth user if possible
-        try {
-          await user.delete();
-        } catch (delErr) {
-          console.error('Failed to delete user after firestore write failure:', delErr);
-        }
-        setStatusVariant('error');
-        setStatusMessage('Failed to finish signup. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
+      await updateProfile(user, {
+        displayName: username,
+      });
       setStatusVariant('success');
       setStatusMessage('Account created successfully. Redirecting...');
-      router.replace('/generalTasks'); // or '/main' if you want to auto-login
+      router.replace('/tasks'); // or '/main' if you want to auto-login
     } catch (error) {
       console.error('Sign up error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
       setStatusMessage(`Failed to create account. ${message}`);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -202,28 +130,17 @@ export default function Tab2() {
   );
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
-  <Center className="flex-1">
-      <Image
-            source={iconImage}
-            accessibilityLabel="PenPad logo"
-            resizeMode="contain"
-              size='2xl' 
-              className="w-[300px] h-[220px] lg:w-[150px] lg:h-[150px] -mt-1 ml-10"
-          />
+    <Center className="flex-1">
+     
       <Text
         className="text-2xl text-bold"
-        style={{ color: Colors[colorScheme].text, fontFamily: 'Poppins_600SemiBold' }}
+        style={{ fontFamily: 'Poppins_600SemiBold' }}
       >
         Create Your Account
       </Text>
-      <Divider className="my-[20px] w-[80%]" />
+      <Divider className="my-[30px] w-[80%]" />
 
-      <VStack space="sm" className="w-[80%]">
+      <VStack space="md" className="w-[80%]">
         <FormControl
           isInvalid={isInvalid}
           size="lg"
@@ -231,7 +148,7 @@ export default function Tab2() {
           isReadOnly={false}
           isRequired={false}
         >
-          <VStack space="sm">
+          <VStack space="md">
           <Input
             variant="rounded"
             size="xl"
@@ -246,7 +163,6 @@ export default function Tab2() {
               autoCapitalize="none"
             />
           </Input>
-          
           <Input
             variant="rounded"
             size="xl"
@@ -255,12 +171,11 @@ export default function Tab2() {
             isReadOnly={false}
           >
             <InputField
-              placeholder="Name"
+              placeholder="Username"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
             />
-          
           </Input>
           <Input
             variant="rounded"
@@ -278,7 +193,7 @@ export default function Tab2() {
             <InputSlot className="pr-3" onPress={handlestate}>
               <InputIcon
                 as={showPassword ? EyeIcon : EyeOffIcon}
-                color={Colors[colorScheme].text} />
+                color={Colors[colorScheme ?? 'light'].text} />
             </InputSlot>
           </Input>
           <Input
@@ -297,7 +212,7 @@ export default function Tab2() {
             <InputSlot className="pr-3" onPress={handlestate}>
               <InputIcon
                 as={showPassword ? EyeIcon : EyeOffIcon}
-                color={Colors[colorScheme].text} />
+                color={Colors[colorScheme ?? 'light'].text} />
             </InputSlot>
 
           </Input>
@@ -311,22 +226,15 @@ export default function Tab2() {
             {statusMessage}
           </Text>
         )}
-          <Box className='items-center w-full rounded-x1'>
+        <Box className='items-center w-full rounded-x1'>
           <Button
             size="lg"
             className="bg-primary-500 px-6 py-2 rounded-full"
             variant='solid'
-            isDisabled={!canSignUp}
+            isDisabled={isSignUpDisabled}
             onPress={handleSignUp}
           >
-            {isLoading ? (
-              <>
-                <Spinner size="small" color={Colors[colorScheme].text} className="mr-2" />
-                <ButtonText>Signing up...</ButtonText>
-              </>
-            ) : (
-              <ButtonText>  Sign Up  </ButtonText>
-            )}
+            <ButtonText>  Sign Up  </ButtonText>
           </Button>
         </Box>
 
@@ -340,6 +248,5 @@ export default function Tab2() {
       </VStack>
 
     </Center>
-    </KeyboardAvoidingView>
   );
 }

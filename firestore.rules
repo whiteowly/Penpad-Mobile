@@ -289,8 +289,25 @@ service cloud.firestore {
   // necessary (e.g. to participants-only reads).
   allow get: if request.auth != null;
 
-      // Disallow client-side updates/deletes to chat metadata for now.
-      allow update, delete: if false;
+      // Allow participants to set their own `lastSeen` timestamp via a merge
+      // update that only touches the `lastSeen` map. This lets clients record
+      // when a participant last opened the chat while preventing changes to
+      // other metadata (participants, etc.). Deletions and arbitrary updates
+      // remain disallowed.
+      allow update: if request.auth != null
+                      && exists(/databases/$(database)/documents/chats/$(chatId))
+                      // caller must be a participant
+                      && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+                      // update must only contain the `lastSeen` top-level key
+                      && request.resource.data.keys().hasOnly(['lastSeen'])
+                      // lastSeen must only contain the caller's uid key (so they can't touch others)
+                      && request.resource.data.lastSeen.keys().hasOnly([request.auth.uid])
+                      // and the caller must set their own lastSeen entry to a timestamp or serverTimestamp() (null sentinel)
+                      && (
+                        request.resource.data.lastSeen[request.auth.uid] is timestamp ||
+                        request.resource.data.lastSeen[request.auth.uid] == null
+                      );
+          allow delete: if false;
 
       match /messages/{messageId} {
         // Helper: check that the chat metadata exists and the caller is a participant
