@@ -1,6 +1,7 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { measure } from "react-native-reanimated";
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAaTaGHJVq9ouy-9TbkeJ7xQ-f5GCh6u4g",
@@ -13,5 +14,19 @@ const firebaseConfig = {
 };
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// Initialize React Native Auth with AsyncStorage persistence so the
+// user's session survives app restarts. This prevents showing the login
+// screen every time the app opens.
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e) {
+  // initializeAuth may throw if already initialized — fall back to getAuth
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 export default firebaseConfig;

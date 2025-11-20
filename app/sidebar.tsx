@@ -121,7 +121,7 @@ function Sidebar() {
             <Pressable className="gap-3 flex-row items-center hover:bg-background-50 p-2 rounded-md"
             onPress={() => {router.push('/upcoming'); setShowDrawer(false);}}>
               <Icon as={CalendarDaysIcon} size="lg" className="text-typography-600" />
-              <Text>Upcoming</Text>
+              <Text>Calendar</Text>
             </Pressable>
           </DrawerBody>
           <DrawerFooter>
