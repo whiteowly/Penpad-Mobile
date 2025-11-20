@@ -51,6 +51,7 @@ const Main = () => {
   const [emailSearchResult, setEmailSearchResult] = useState<{ uid: string; email?: string; username?: string } | null>(null);
   const [isEmailSearching, setIsEmailSearching] = useState(false);
   const [emailSearchTried, setEmailSearchTried] = useState(false);
+  const [emailSearchError, setEmailSearchError] = useState<string | null>(null);
 
   const [incomingRequests, setIncomingRequests] = useState<Array<any>>([]);
   const [friends, setFriends] = useState<FriendDoc[]>([]);
@@ -110,6 +111,16 @@ const Main = () => {
     setEmailSearchResult(null);
     setEmailSearchTried(false);
     try {
+      // Ensure the client is authenticated before attempting the query.
+      // Firestore rules only allow this list query when request.auth != null.
+      if (!auth.currentUser) {
+        const msg = 'You must be signed in to search by email.';
+        console.error('Email search attempted while not authenticated');
+        setEmailSearchError(msg);
+        setEmailSearchTried(true);
+        setIsEmailSearching(false);
+        return;
+      }
       const trimmed = (emailSearchText || '').trim().toLowerCase();
       if (!trimmed) {
         setIsEmailSearching(false);
@@ -133,8 +144,12 @@ const Main = () => {
       }
       // mark that a search attempt completed
       setEmailSearchTried(true);
-    } catch (err) {
-      console.error('Email search failed', err);
+    } catch (err: any) {
+      // Provide clearer logging for permission errors and show to the user
+      const code = err?.code ?? 'unknown';
+      const message = err?.message ?? String(err);
+      console.error('Email search failed', code, message);
+      setEmailSearchError(`${code}: ${message}`);
       setEmailSearchResult(null);
       setEmailSearchTried(true);
     } finally {
@@ -360,9 +375,14 @@ const Main = () => {
                 autoCapitalize="none"
               />
             </Input>
-            <Button className="bg-secondary-500 px-6 py-2 rounded-full" size="lg" onPress={handleEmailSearch}>
-              <ButtonIcon as={SearchIcon} />
-            </Button>
+              <Button
+                className="bg-secondary-500 px-6 py-2 rounded-full"
+                size="lg"
+                onPress={handleEmailSearch}
+                disabled={!auth.currentUser || isEmailSearching}
+              >
+                <ButtonIcon as={SearchIcon} />
+              </Button>
             </HStack> 
            
           </Box>
@@ -377,6 +397,12 @@ const Main = () => {
             ) : (
               emailSearchText ? <Text>No user found with that email</Text> : null
             )}
+
+            {emailSearchTried && emailSearchError ? (
+              <Box className="mt-2">
+                <Text size="sm" className="text-red-500">{emailSearchError}</Text>
+              </Box>
+            ) : null}
           </Box>
         </Box>
       </Box>

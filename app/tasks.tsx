@@ -762,9 +762,7 @@ const Main = () => {
                           <Icon as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon} size="lg" />
                         </Pressable>
 
-                        {/* <Pressable className="ml-3 rounded-full p-2" onPress={() => setPickerState({ type: 'todo', todoId: todo.id, initialDate: (todo as any).reminderAt ? new Date((todo as any).reminderAt) : new Date() })} accessibilityLabel="Set todo reminder">
-                          <Icon as={ClockIcon} size="sm" className={`${(todo as any).reminderAt ? 'text-success-600' : 'text-typography-600'}`} />
-                        </Pressable> */}
+                       
 
 
 
@@ -862,43 +860,7 @@ const Main = () => {
           </ScrollView>
          
           {/* Modal-based datetime picker (avoids native dialog.dismiss issues on Android) */}
-          <DateTimePickerModal
-            isVisible={Boolean(pickerState)}
-            mode="datetime"
-            date={pickerState?.initialDate ?? new Date()}
-            onConfirm={async (date) => {
-              const ps = pickerState;
-              setPickerState(null);
-              if (!ps) return;
-              if (ps.type === 'todo') {
-                const todo = todos.find((t) => t.id === ps.todoId);
-                if (todo) await handleSetTodoReminder(todo, date);
-              } else {
-                const subList = subtasksMap[ps.todoId] || [];
-                const sub = subList.find((s) => s.id === ps.subId);
-                if (sub) {
-                  await handleSetSubtaskReminder(ps.todoId, sub, date);
-                } else if ((ps as any).initialSubText) {
-                  // If the realtime listener hasn't arrived yet, construct a temporary subtask object
-                  const tempSub: SubtaskItem = {
-                    id: ps.subId,
-                    text: (ps as any).initialSubText,
-                    completed: false,
-                    reminderAt: null,
-                    notificationId: null,
-                  };
-                  await handleSetSubtaskReminder(ps.todoId, tempSub, date);
-                }
-              }
-            }}
-            onCancel={() => setPickerState(null)}
-            // color the native picker controls to match the current theme tint
-            // iOS: textColor controls the spinner/inline text color
-            textColor={Colors[colorScheme].tint}
-            // Android: accentColor (supported by @react-native-community/datetimepicker) sets the highlight color
-            accentColor={Colors[colorScheme].tint}
-            // Android: prefer the spinner display inside the modal to avoid system dialog dismissal issues
-          />
+          
         </Box>
 
 
@@ -942,12 +904,7 @@ const Main = () => {
               <Input variant="outline" size="xl">
                 <InputField placeholder="Add it here..." value={inputValue} onChangeText={setInputValue} autoFocus returnKeyType="done" onSubmitEditing={() => handleAddTodo()} />
               </Input>
-              <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
-                onPress={() => setPickerState({ type: 'todo', todoId: 'new', initialDate: new Date() })}
-                accessibilityLabel="Set reminder">
-                <Icon as={ClockIcon} size="lg" />
-                <Text className="mt-1 text-typography-600">Set Reminder</Text>
-              </Pressable>
+              
             </ModalBody>
             <ModalFooter className="flex-col items-start gap-3 w-full">
               <Button size="lg" className="w-full bg-primary-500" onPress={handleAddTodo} isDisabled={isSaving}>

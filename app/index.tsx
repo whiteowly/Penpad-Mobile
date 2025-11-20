@@ -17,7 +17,7 @@ export default function Home() {
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
       router.replace('/tabs/tab1');
-    }, 1500);
+    }, 3000);
 
     return () => clearTimeout(timeoutId);
   }, [router]);
@@ -38,7 +38,6 @@ export default function Home() {
               size='5xl' 
               className="w-[350px] h-[220px] lg:w-[200px] lg:h-[200px] -mt-8 ml-8"
           />
-          
         </Box>
       </Box>
     </Box>
