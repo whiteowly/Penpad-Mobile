@@ -809,67 +809,9 @@ const Main = () => {
         }
     };
 
-    const handleSetTodoReminder = async (todo: TodoItem, date: Date | null) => {
-        if (!activeUserId) {
-            alert('Sign in to set reminders');
-            return;
-        }
 
-        const todoRef = IS_SHARED ? doc(db, 'shared', todo.id) : doc(db, 'users', activeUserId, 'todos', todo.id);
 
-        try {
-            // cancel existing
-            await cancelNotification((todo as any).notificationId);
-
-            if (date) {
-                // scheduleNotification expects a Date but typings require NotificationTriggerInput; cast to any
-                const notifId = await scheduleNotification('Task reminder', todo.text ?? 'Reminder', date as any);
-                await updateDoc(todoRef, { reminderAt: date, notificationId: notifId ?? null, updatedAt: serverTimestamp() });
-            } else {
-                await updateDoc(todoRef, { reminderAt: null, notificationId: null, updatedAt: serverTimestamp() });
-            }
-        } catch (err) {
-            console.error('Failed to set todo reminder', err);
-            alert('Could not set reminder');
-        }
-    };
-
-    const handleSetSubtaskReminder = async (todoId: string, sub: SubtaskItem, date: Date | null) => {
-        if (!activeUserId) {
-            alert('Sign in to set reminders');
-            return;
-        }
-        const subRef = IS_SHARED ? doc(db, 'shared', todoId, 'subtasks', sub.id) : doc(db, 'users', activeUserId, 'todos', todoId, 'subtasks', sub.id);
-        try {
-            await cancelNotification((sub as any).notificationId);
-
-            if (date) {
-                // cast Date to any to satisfy Expo Notifications typings
-                const notifId = await scheduleNotification('Subtask reminder', sub.text ?? 'Reminder', date as any);
-                await updateDoc(subRef, { reminderAt: date, notificationId: notifId ?? null, updatedAt: serverTimestamp() });
-            } else {
-                await updateDoc(subRef, { reminderAt: null, notificationId: null, updatedAt: serverTimestamp() });
-            }
-        } catch (err) {
-            console.error('Failed to set subtask reminder', err);
-            alert('Could not set subtask reminder');
-        }
-    };
-
-    const onPickerChange = async (_event: any, selectedDate?: Date) => {
-        const ps = pickerState;
-        setPickerState(null);
-        if (!ps || !selectedDate) return; // cancelled
-
-        if (ps.type === 'todo') {
-            const todo = todos.find((t) => t.id === ps.todoId);
-            if (todo) await handleSetTodoReminder(todo, selectedDate);
-        } else {
-            const subList = subtasksMap[ps.todoId] || [];
-            const sub = subList.find((s) => s.id === ps.subId);
-            if (sub) await handleSetSubtaskReminder(ps.todoId, sub, selectedDate);
-        }
-    };
+   
 
     const pendingTodo = pendingDeleteTodoId ? (IS_SHARED ? sharedTasks.find((t) => t.id === pendingDeleteTodoId) : todos.find((t) => t.id === pendingDeleteTodoId)) : null;
 
@@ -963,13 +905,6 @@ const Main = () => {
                                                     <Pressable className="ml-3 rounded-full p-2" onPress={() => toggleExpand(todo.id)} accessibilityLabel="Toggle subtasks">
                                                         <Icon as={expandedMap[todo.id] ? ChevronUpIcon : ChevronDownIcon} size="lg" />
                                                     </Pressable>
-
-
-
-
-
-                                                   
-
                                                     <Pressable className="ml-3 rounded-full p-2" onPress={() => setPendingDeleteTodoId(todo.id)} disabled={deletingId === todo.id} accessibilityLabel="Delete task">
                                                         <Icon as={TrashIcon} size="lg" className={`text-error-600 ${deletingId === todo.id ? 'opacity-40' : 'opacity-90'}`} />
                                                     </Pressable>
@@ -1044,44 +979,7 @@ const Main = () => {
                             </VStack>
                         </ScrollView>
 
-                        
-                        <DateTimePickerModal
-                            isVisible={Boolean(pickerState)}
-                            mode="datetime"
-                            date={pickerState?.initialDate ?? new Date()}
-                            onConfirm={async (date) => {
-                                const ps = pickerState;
-                                setPickerState(null);
-                                if (!ps) return;
-                                if (ps.type === 'todo') {
-                                    const todo = IS_SHARED ? sharedTasks.find((t) => t.id === ps.todoId) : todos.find((t) => t.id === ps.todoId);
-                                    if (todo) await handleSetTodoReminder(todo, date);
-                                } else {
-                                    const subList = subtasksMap[ps.todoId] || [];
-                                    const sub = subList.find((s) => s.id === ps.subId);
-                                    if (sub) {
-                                        await handleSetSubtaskReminder(ps.todoId, sub, date);
-                                    } else if ((ps as any).initialSubText) {
-                                        // If the realtime listener hasn't arrived yet, construct a temporary subtask object
-                                        const tempSub: SubtaskItem = {
-                                            id: ps.subId,
-                                            text: (ps as any).initialSubText,
-                                            completed: false,
-                                            reminderAt: null,
-                                            notificationId: null,
-                                        };
-                                        await handleSetSubtaskReminder(ps.todoId, tempSub, date);
-                                    }
-                                }
-                            }}
-                            onCancel={() => setPickerState(null)}
-                            // color the native picker controls to match the current theme tint
-                            // iOS: textColor controls the spinner/inline text color
-                            textColor={Colors[colorScheme].tint}
-                            // Android: accentColor (supported by @react-native-community/datetimepicker) sets the highlight color
-                            accentColor={Colors[colorScheme].tint}
-                        // Android: prefer the spinner display inside the modal to avoid system dialog dismissal issues
-                        />
+        
                     </Box>
 
 
@@ -1126,12 +1024,7 @@ const Main = () => {
                                 <Input variant="outline" size="xl">
                                     <InputField placeholder="Add it here..." value={inputValue} onChangeText={setInputValue} autoFocus returnKeyType="done" onSubmitEditing={() => handleAddTodo()} />
                                 </Input>
-                                <Pressable className="gap-3 flex-row items-center p-2 rounded-md"
-                                    onPress={() => setPickerState({ type: 'todo', todoId: 'new', initialDate: new Date() })}
-                                    accessibilityLabel="Set reminder">
-                                    <Icon as={ClockIcon} size="lg" />
-                                    <Text className="mt-1 text-typography-600">Set Reminder</Text>
-                                </Pressable>
+                              
                             </ModalBody>
                             <ModalFooter className="flex-col items-start gap-3 w-full">
                                 <Button size="lg" className="w-full bg-primary-500" onPress={handleAddTodo} isDisabled={isSaving}>

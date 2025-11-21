@@ -14,6 +14,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
@@ -32,6 +33,7 @@ import {
 import { AlertCircleIcon } from '@/components/ui/icon';
 import React from 'react';
 import { Image } from '@/components/ui/image';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,6 +101,20 @@ export default function Tab2() {
       await updateProfile(user, {
         displayName: username,
       });
+      // Create a Firestore user profile document so the app can search by email.
+      try {
+        const db = getFirestore(app);
+        await setDoc(doc(db, 'users', user.uid), {
+          email: user.email ?? null,
+          emailLowerCase: (user.email || '').toLowerCase(),
+          username: username || null,
+          displayName: username || null,
+          createdAt: serverTimestamp(),
+        });
+      } catch (fireErr) {
+        console.error('Failed to create user profile document:', fireErr);
+        // Not fatal for signup flow; continue.
+      }
       setStatusVariant('success');
       setStatusMessage('Account created successfully. Redirecting...');
       router.replace('/tasks'); // or '/main' if you want to auto-login
@@ -130,8 +146,14 @@ export default function Tab2() {
   );
 
   return (
-    <Center className="flex-1">
-     
+    
+      <KeyboardAvoidingView
+           style={{ flex: 1 }}
+           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+           keyboardVerticalOffset={80}
+         >
+          <Center className="flex-1">
+         
       <Text
         className="text-2xl text-bold"
         style={{ fontFamily: 'Poppins_600SemiBold' }}
@@ -248,5 +270,6 @@ export default function Tab2() {
       </VStack>
 
     </Center>
+        </KeyboardAvoidingView>
   );
 }

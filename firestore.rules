@@ -85,7 +85,13 @@ service cloud.firestore {
     match /users/{userId} {
       // allow other authenticated users to read a user's public profile (displayName, photoURL, username)
       allow get: if request.auth != null;
-      allow list: if false;
+
+      // TEMPORARY: Allow authenticated clients to list/query the `users`
+      // collection. This relaxes previous restrictions to unblock client
+      // email-search behavior quickly. IMPORTANT: revert to a stricter
+      // rule (e.g., require a single equality on `emailLowerCase`) for
+      // production to avoid exposing broad user data.
+      allow list: if request.auth != null;
 
       // todos collection: owner-only access
       match /todos/{todoId} {

@@ -1,29 +1,27 @@
 {
   "expo": {
-    "name": "PenPad ToDo",
-    "slug": "penpad-todo",
+    "name": "PenPad",
+    "slug": "penpad",
     "version": "1.0.0",
     "orientation": "portrait",
-  "icon": "./assets/images/icon.jpg",
+    "icon": "./assets/images/icon.jpg",
     "scheme": "ToDoLisss",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.whiteowly.todolisss"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
       "package": "com.jer.todolisss",
       "adaptiveIcon": {
-  "foregroundImage": "./assets/images/icon.jpg",
+        "foregroundImage": "./assets/images/icon.jpg",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.whiteowly.todolisss"
     },
     "web": {
       "bundler": "metro",
@@ -51,6 +49,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7765b430-40c4-4756-9e5d-609ce816fef7"
+      }
     }
   }
 }

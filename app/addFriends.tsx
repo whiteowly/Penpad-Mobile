@@ -51,6 +51,7 @@ const Main = () => {
   const [emailSearchResult, setEmailSearchResult] = useState<{ uid: string; email?: string; username?: string } | null>(null);
   const [isEmailSearching, setIsEmailSearching] = useState(false);
   const [emailSearchTried, setEmailSearchTried] = useState(false);
+  const [emailSearchError, setEmailSearchError] = useState<string | null>(null);
 
   const [incomingRequests, setIncomingRequests] = useState<Array<any>>([]);
   const [friends, setFriends] = useState<FriendDoc[]>([]);
@@ -110,6 +111,16 @@ const Main = () => {
     setEmailSearchResult(null);
     setEmailSearchTried(false);
     try {
+      // Ensure the client is authenticated before attempting the query.
+      // Firestore rules only allow this list query when request.auth != null.
+      if (!auth.currentUser) {
+        const msg = 'You must be signed in to search by email.';
+        console.error('Email search attempted while not authenticated');
+        setEmailSearchError(msg);
+        setEmailSearchTried(true);
+        setIsEmailSearching(false);
+        return;
+      }
       const trimmed = (emailSearchText || '').trim().toLowerCase();
       if (!trimmed) {
         setIsEmailSearching(false);
@@ -133,8 +144,12 @@ const Main = () => {
       }
       // mark that a search attempt completed
       setEmailSearchTried(true);
-    } catch (err) {
-      console.error('Email search failed', err);
+    } catch (err: any) {
+      // Provide clearer logging for permission errors and show to the user
+      const code = err?.code ?? 'unknown';
+      const message = err?.message ?? String(err);
+      console.error('Email search failed', code, message);
+      setEmailSearchError(`${code}: ${message}`);
       setEmailSearchResult(null);
       setEmailSearchTried(true);
     } finally {
@@ -168,89 +183,54 @@ const Main = () => {
     }
   };
 
-  // listen to outgoing (pending) requests sent by current user
-  const [pendingRequests, setPendingRequests] = useState<Array<any>>([]);
-  const [pendingMeta, setPendingMeta] = useState<Record<string, { username?: string; displayName?: string; email?: string }>>({});
-  useEffect(() => {
-    if (!uid) return;
-    const q = query(collection(db, 'users', uid, 'sentRequests'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setPendingRequests(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-    });
-    return () => unsub();
-  }, [db, uid]);
-
-  // Resolve metadata (username/displayName/email) for pending targets
-  useEffect(() => {
-    let isMounted = true;
-    const uids = Array.from(new Set(pendingRequests.map((p) => p.toUid).filter(Boolean)));
-    const missing = uids.filter((id) => !pendingMeta[id]);
-    if (missing.length === 0) return;
-    (async () => {
-      try {
-        const entries: Array<[string, any]> = [];
-        await Promise.all(
-          missing.map(async (id) => {
-            try {
-              const snap = await getDoc(doc(db, 'users', id));
-              if (snap.exists()) {
-                const d = snap.data() as any;
-                entries.push([id, { username: d?.username, displayName: d?.displayName, email: d?.email }]);
-              } else {
-                entries.push([id, {}]);
-              }
-            } catch (err) {
-              console.error('Failed to fetch user meta for pending request', id, err);
-              entries.push([id, {}]);
-            }
-          })
-        );
-        if (!isMounted) return;
-        setPendingMeta((prev) => {
-          const copy = { ...prev };
-          for (const [id, meta] of entries) copy[id] = meta;
-          return copy;
-        });
-      } catch (err) {
-        console.error('Failed to resolve pending request metas', err);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [pendingRequests]);
-
-  const cancelSentRequest = async (targetUid: string) => {
-    if (!uid) return;
-    try {
-      await deleteDoc(doc(db, 'users', uid, 'sentRequests', targetUid));
-      await deleteDoc(doc(db, 'users', targetUid, 'friendRequests', uid));
-    } catch (err) {
-      console.error('Failed to cancel sent request', err);
-    }
-  };
 
   const acceptRequest = async (requestId: string, fromUid: string, fromDisplayName?: string) => {
     if (!uid) return;
+    // We'll perform each Firestore operation separately and handle
+    // permission errors gracefully. The important parts are: (1) create
+    // our own friend doc and (2) remove the incoming request. Attempts
+    // to modify the other user's sentRequests or write their friend doc
+    // may be rejected by rules; treat those as non-fatal.
+    const mineRef = doc(db, 'users', uid, 'friends', fromUid);
     try {
-      // create friend doc s for both users (bi-directional)
-      const mineRef = doc(db, 'users', uid, 'friends', fromUid);
-      const theirRef = doc(db, 'users', fromUid, 'friends', uid);
       await setDoc(mineRef, { uid: fromUid, displayName: fromDisplayName ?? null, createdAt: serverTimestamp() });
-      await setDoc(theirRef, { uid, displayName: auth.currentUser?.displayName ?? null, createdAt: serverTimestamp() });
-
-      // remove the request
-      await deleteDoc(doc(db, 'users', uid, 'friendRequests', requestId));
-      // also remove the sender's outgoing pending record so it disappears from their pending list
-      try {
-        await deleteDoc(doc(db, 'users', fromUid, 'sentRequests', uid));
-      } catch (e) {
-        // best-effort: if this fails, don't block the accept flow
-        console.error('Failed to remove sender sentRequest after accept', fromUid, e);
-      }
-    } catch (err) {
-      console.error('Failed to accept friend request', err);
+    } catch (e: any) {
+      console.error('Failed to create local friend doc', fromUid, e);
+      // If we can't write our own friend doc, abort and surface error.
+      throw e;
     }
+
+    // Try to create reciprocal friend doc on the other user's document.
+    try {
+      const theirRef = doc(db, 'users', fromUid, 'friends', uid);
+      await setDoc(theirRef, { uid, displayName: auth.currentUser?.displayName ?? null, createdAt: serverTimestamp() });
+    } catch (e: any) {
+      // Permissible to fail due to security rules; log and continue.
+      if (e?.code === 'permission-denied') {
+        console.warn('Could not create reciprocal friend doc due to security rules; continuing.', e.message);
+      } else {
+        console.error('Failed to create reciprocal friend doc', e);
+      }
+    }
+
+    // Remove the incoming friend request (we are the recipient so this should be allowed).
+    try {
+      await deleteDoc(doc(db, 'users', uid, 'friendRequests', requestId));
+    } catch (e: any) {
+      console.error('Failed to remove incoming friend request', requestId, e);
+      // Not fatal to the client UX, but surface to console for debugging.
+    }
+
+    // Attempt to remove the sender's sentRequests entry. This is often
+    // disallowed by rules (only the owner may delete), so don't fail the
+    // flow if it errors.
+    try {
+      await deleteDoc(doc(db, 'users', fromUid, 'sentRequests', uid));
+    } catch (e: any) {
+      console.warn('Could not remove sender sentRequest (non-fatal)', fromUid, e?.code ?? e);
+    }
+    // At this point we've completed the visible accept flow.
+    return;
   };
 
   const rejectRequest = async (requestId: string) => {
@@ -305,78 +285,70 @@ const Main = () => {
         <Divider className="my-0 w-full" />
 
         <Box className="mt-2">
-        <Box>
-          <Text size="md" className="mb-2">Incoming Requests</Text>
-          {incomingRequests.length === 0 ? (
-            <Text size="sm">None</Text>
-          ) : (
-            incomingRequests.map((r) => (
+          <Box>
+            <Text size="md" className="mb-2">Incoming Requests</Text>
+            {incomingRequests.length === 0 ? (
+              <Text size="sm">None</Text>
+            ) : (
+              incomingRequests.map((r) => (
                 <VStack key={r.id} className="mb-1">
-                <HStack key={r.id} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
-                <Text size="md">{r.fromDisplayName ?? r.fromUid}</Text>
-                 <Box className="flex-row gap-2">
-                  <Button className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => acceptRequest(r.id, r.fromUid, r.fromDisplayName)}>
-                    <ButtonIcon as={CheckIcon} />
-                  </Button>
-                  <Button className="bg-secondary-500 px-6 py-2 rounded-full bg-red-500" onPress={() => rejectRequest(r.id)}>
-                    <ButtonIcon as={CloseIcon} />
-                  </Button>
-                </Box>
-              </HStack>
-            </VStack>
-            ))
-          )}
-        </Box>
+                  <HStack key={r.id} className="flex-row items-center justify-between bg-background-50 rounded-xl border-border-200 px-4 py-3">
+                    <Text size="md">{r.fromDisplayName ?? r.fromUid}</Text>
+                    <Box className="flex-row gap-2">
+                      <Button className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => acceptRequest(r.id, r.fromUid, r.fromDisplayName)}>
+                        <ButtonIcon as={CheckIcon} />
+                      </Button>
+                      <Button className="bg-secondary-500 px-6 py-2 rounded-full bg-red-500" onPress={() => rejectRequest(r.id)}>
+                        <ButtonIcon as={CloseIcon} />
+                      </Button>
+                    </Box>
+                  </HStack>
+                </VStack>
+              ))
+            )}
+          </Box>
+
           <Divider className="my-4 w-full" />
-        <Box>
-          <Text size="md" className="mb-2">Pending Requests (sent)</Text>
-          {pendingRequests.length === 0 ? (
-            <Text size = "sm">None</Text>
-          ) : (
-            pendingRequests.map((p) => (
-                <VStack key={p.id} space ="sm">
-                  <HStack className="flex-row items-center justify-between bg-background-50 rounded-xl px-4 py-3 my-2">
-                <Text size="lg">{(pendingMeta[p.toUid]?.username ? `${pendingMeta[p.toUid].username}` : (pendingMeta[p.toUid]?.displayName ?? pendingMeta[p.toUid]?.email ?? p.toUid))}</Text>
-                <Box className="flex-row gap-2">
-                  <Button className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => cancelSentRequest(p.id)}>
-                    <ButtonText>Cancel</ButtonText>
-                  </Button>
-                </Box>
-              </HStack>
-              </VStack>
-            ))
-          )}
-        </Box>
-         <Divider className="my-4 w-full" />
-      
-         <Box className="flex-0 items-start gap-2">
+
+          <Box className="flex-0 items-start gap-2">
             <Text size="md" className="mb-2">Search by Email</Text>
             <HStack className="flex-row items-center gap-2">
-            <Input variant="rounded" size="md" className="flex-1">
-              <InputField
-                placeholder="email@example.com"
-                value={emailSearchText}
-                onChangeText={(v) => { setEmailSearchText(v); setEmailSearchResult(null); setEmailSearchTried(false); }}
-                autoCapitalize="none"
-              />
-            </Input>
-            <Button className="bg-secondary-500 px-6 py-2 rounded-full" size="lg" onPress={handleEmailSearch}>
-              <ButtonIcon as={SearchIcon} />
-            </Button>
-            </HStack> 
-           
+              <Input variant="rounded" size="md" className="flex-1">
+                <InputField
+                  placeholder="email@example.com"
+                  value={emailSearchText}
+                  onChangeText={(v) => { setEmailSearchText(v); setEmailSearchResult(null); setEmailSearchTried(false); }}
+                  autoCapitalize="none"
+                />
+              </Input>
+              <Button
+                className="bg-secondary-500 px-6 py-2 rounded-full"
+                size="lg"
+                onPress={handleEmailSearch}
+                disabled={!auth.currentUser || isEmailSearching}
+              >
+                <ButtonIcon as={SearchIcon} />
+              </Button>
+            </HStack>
+
           </Box>
           <Box className="mt-4">
             {emailSearchResult ? (
               <Box className="flex-row items-center justify-between">
-                <Text size = "lg">{emailSearchResult.username ? `${emailSearchResult.username}` : emailSearchResult.email}</Text>
-                <Button variant= "outline" className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => sendFriendRequest(emailSearchResult.uid)}>
+                <Text size="lg">{emailSearchResult.username ? `${emailSearchResult.username}` : emailSearchResult.email}</Text>
+                <Button variant="outline" className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => sendFriendRequest(emailSearchResult.uid)}>
                   <ButtonText>Send Request</ButtonText>
                 </Button>
               </Box>
             ) : (
               emailSearchText ? <Text>No user found with that email</Text> : null
             )}
+
+            {emailSearchTried && emailSearchError ? (
+              <Box className="mt-2">
+                <Text size="sm" className="text-red-500">{emailSearchError}</Text>
+              </Box>
+            ) : null}
           </Box>
         </Box>
       </Box>

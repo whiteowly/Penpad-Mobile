@@ -14,6 +14,7 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Slot } from 'expo-router';
 import { registerThemeHandlers, unregisterThemeHandlers } from '../lib/themeManager';
@@ -62,7 +63,13 @@ function RootLayoutNav() {
 
   return (
     <GluestackUIProvider mode={colorMode}>
+<<<<<<< HEAD
+      <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
+        {/* Ensure system status bar (clock/notifications) is visible */}
+        <StatusBar style="auto" translucent={false} hidden={false} />
+=======
       <ThemeProvider value={themeValue}>
+>>>>>>> ffc16eb8705aa69fd0eaa4ba8d466cc6932dd1b2
         <Slot />
       </ThemeProvider>
     </GluestackUIProvider>
