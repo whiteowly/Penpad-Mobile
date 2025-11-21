@@ -63,9 +63,13 @@ function RootLayoutNav() {
 
   return (
     <GluestackUIProvider mode={colorMode}>
+<<<<<<< HEAD
       <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
         {/* Ensure system status bar (clock/notifications) is visible */}
         <StatusBar style="auto" translucent={false} hidden={false} />
+=======
+      <ThemeProvider value={themeValue}>
+>>>>>>> ffc16eb8705aa69fd0eaa4ba8d466cc6932dd1b2
         <Slot />
       </ThemeProvider>
     </GluestackUIProvider>

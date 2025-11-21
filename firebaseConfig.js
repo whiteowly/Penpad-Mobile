@@ -13,6 +13,7 @@ const firebaseConfig = {
 };
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+<<<<<<< HEAD
 
 // Initialize React Native Auth with AsyncStorage persistence so the
 // user's session survives app restarts. This prevents showing the login
@@ -36,4 +37,7 @@ try {
 }
 
 export const auth = authInstance;
+=======
+export const auth = getAuth(app);
+>>>>>>> ffc16eb8705aa69fd0eaa4ba8d466cc6932dd1b2
 export default firebaseConfig;
