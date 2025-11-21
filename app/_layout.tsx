@@ -14,6 +14,7 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Slot } from 'expo-router';
 import { registerThemeHandlers, unregisterThemeHandlers } from '../lib/themeManager';
@@ -34,7 +35,6 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const [styleLoaded, setStyleLoaded] = useState(false);
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
@@ -64,6 +64,8 @@ function RootLayoutNav() {
   return (
     <GluestackUIProvider mode={colorMode}>
       <ThemeProvider value={colorMode === 'dark' ? DarkTheme : DefaultTheme}>
+        {/* Ensure system status bar (clock/notifications) is visible */}
+        <StatusBar style="auto" translucent={false} hidden={false} />
         <Slot />
       </ThemeProvider>
     </GluestackUIProvider>

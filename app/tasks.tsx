@@ -96,12 +96,11 @@ const Main = () => {
       },
       onPanResponderRelease: (_evt, gestureState) => {
         const { dx, dy, vx } = gestureState;
-        // left swipe -> next page (weekly)
+        // left swipe -> weekly
         if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
-          // cast to any to satisfy expo-router generated route union types
           router.push('/weekly' as any);
         }
-        // right swipe -> go back (if sensible)
+        // right swipe -> general
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
           router.push('/generalTasks' as any);
         }
@@ -843,9 +842,6 @@ const Main = () => {
                               }}>
                                 <ButtonText>Add</ButtonText>
                               </Button>
-
-                              {/* We removed the inline reminder button that referenced `sub` (undefined in this scope).
-                                  Instead we open the picker after creating the subtask so the user can choose a reminder. */}
                             </HStack>
                           )}
                         </Box>

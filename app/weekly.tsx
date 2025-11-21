@@ -52,6 +52,7 @@ import { HStack } from '@/components/ui/hstack';
 import { useUserTodos, TodoItem } from '@/lib/useUserTodos';
 import { getWeekNumber } from './dateCalculator';
 
+
 type SubtaskItem = {
     id: string;
     text: string;
@@ -96,12 +97,11 @@ const Main = () => {
             },
             onPanResponderRelease: (_evt, gestureState) => {
                 const { dx, dy, vx } = gestureState;
-                // left swipe -> next page (weekly)
+                // left swipe -> next page (monthly)
                 if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
-                    // cast to any to satisfy expo-router generated route union types
                     router.push('/month' as any);
                 }
-                // right swipe -> go back (if sensible)
+                // right swipe -> go back
                 if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
                     router.back();
                 }
@@ -670,7 +670,9 @@ const Main = () => {
 
     const pendingTodo = pendingDeleteTodoId ? todos.find((t) => t.id === pendingDeleteTodoId) : null;
 
+
     return (
+
         <SafeAreaView style={{ flex: 1, backgroundColor }}>
             <View {...panResponder.panHandlers} style={{ flex: 1 }}>
                 <Box className="flex-1 px-6" style={{ backgroundColor }}>
@@ -885,7 +887,9 @@ const Main = () => {
 
                 </Box>
             </View>
+            
         </SafeAreaView>
+        
     );
 };
 

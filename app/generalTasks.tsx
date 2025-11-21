@@ -87,17 +87,15 @@ const Main = () => {
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_evt, gestureState) => {
         const { dx, dy } = gestureState;
-        // activate when horizontal movement dominates
         return Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy);
       },
       onPanResponderRelease: (_evt, gestureState) => {
         const { dx, dy, vx } = gestureState;
-        // left swipe -> next page (weekly)
+        // left swipe -> next page (today)
         if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
-          // cast to any to satisfy expo-router generated route union types
           router.push('/tasks' as any);
         }
-        // right swipe -> go back (if sensible)
+        // right swipe -> go back
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
           router.back();
         }

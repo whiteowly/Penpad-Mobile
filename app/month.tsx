@@ -91,12 +91,11 @@ const Main = () => {
       },
       onPanResponderRelease: (_evt, gestureState) => {
         const { dx, dy, vx } = gestureState;
-        // left swipe -> next page (weekly)
+        // left swipe -> next page (general)
         if (Math.abs(dy) < 80 && dx < -80 && Math.abs(vx) > 0.05) {
-          // cast to any to satisfy expo-router generated route union types
           router.push('/generalTasks' as any);
         }
-        // right swipe -> go back (if sensible)
+        // right swipe -> go back
         if (Math.abs(dy) < 80 && dx > 80 && Math.abs(vx) > 0.05) {
           router.back();
         }
