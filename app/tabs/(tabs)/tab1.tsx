@@ -45,11 +45,11 @@ export default function Tab1() {
     return unsubscribe;
   }, [auth]);
 
-  // If user is signed in, immediately redirect to the general tasks page.
+  // If user is signed in, immediately redirect to the tasks page.
   useEffect(() => {
     if (user) {
       try {
-        router.replace('/generalTasks' as any);
+        router.replace('/tasks' as any);
       } catch (e) {
         // ignore navigation errors
       }
@@ -68,13 +68,12 @@ export default function Tab1() {
     }
     setStatusMessage(null);
     setStatusVariant(null);
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setPassword('');
       setStatusVariant('success');
       setStatusMessage('Signed in successfully. Redirecting...');
-      router.replace('/generalTasks' as any);
+      router.replace('/tasks' as any);
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : 'Unknown error';
