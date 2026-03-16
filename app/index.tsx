@@ -5,6 +5,8 @@ import { VStack } from '@/components/ui/vstack';
 import { Image } from '@/components/ui/image';
 import { useFonts, DancingScript_700Bold } from '@expo-google-fonts/dancing-script';
 import { useRouter } from 'expo-router';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { app } from '../firebaseConfig';
 
 const iconImage = require('../assets/images/logo.jpg');
 
@@ -13,14 +15,30 @@ export default function Home() {
   const [fontsLoaded] = useFonts({
     DancingScript_700Bold,
   });
+  const [userState, setUserState] = React.useState<any>(undefined);
 
   React.useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUserState(user);
+    });
+    return unsubscribe;
+  }, []);
+
+  React.useEffect(() => {
+    // Wait until fonts load and auth finishes checking
+    if (!fontsLoaded || userState === undefined) return;
+
     const timeoutId = setTimeout(() => {
-      router.replace('/tabs/tab1');
+      if (userState) {
+        router.replace('/tasks' as any);
+      } else {
+        router.replace('/tabs/tab1');
+      }
     }, 3000);
 
     return () => clearTimeout(timeoutId);
-  }, [router]);
+  }, [router, fontsLoaded, userState]);
 
   if (!fontsLoaded) {
     return null;

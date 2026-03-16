@@ -296,31 +296,34 @@ service cloud.firestore {
   allow get: if request.auth != null;
 
       // Allow participants to set their own `lastSeen` timestamp via a merge
-      // update that only touches the `lastSeen` map. This lets clients record
-      // when a participant last opened the chat while preventing changes to
-      // other metadata (participants, etc.). Deletions and arbitrary updates
-      // remain disallowed.
+      // update that only touches the `lastSeen` map.
       allow update: if request.auth != null
                       && exists(/databases/$(database)/documents/chats/$(chatId))
                       // caller must be a participant
                       && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
-                      // update must only contain the `lastSeen` top-level key
-                      && request.resource.data.keys().hasOnly(['lastSeen'])
-                      // lastSeen must only contain the caller's uid key (so they can't touch others)
-                      && request.resource.data.lastSeen.keys().hasOnly([request.auth.uid])
+                      // update must only modify the `lastSeen` top-level key
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen'])
                       // and the caller must set their own lastSeen entry to a timestamp or serverTimestamp() (null sentinel)
                       && (
                         request.resource.data.lastSeen[request.auth.uid] is timestamp ||
                         request.resource.data.lastSeen[request.auth.uid] == null
+                      )
+                      // prevent modifying other participant's lastSeen
+                      && (
+                        !('lastSeen' in resource.data) || 
+                        request.resource.data.lastSeen.diff(resource.data.lastSeen).affectedKeys().hasOnly([request.auth.uid])
                       );
           allow delete: if false;
 
       match /messages/{messageId} {
-        // Helper: check that the chat metadata exists and the caller is a participant
+        // Helper: check that the caller is a participant based on the chatId string
+        // Since chatId is formatted as "uid1_uid2", we can securely verify membership
+        // without requiring the chat metadata document to exist first.
         function isParticipant() {
-          return exists(/databases/$(database)/documents/chats/$(chatId))
-                 && request.auth != null
-                 && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+          return request.auth != null && (
+            chatId.split('_')[0] == request.auth.uid ||
+            chatId.split('_')[1] == request.auth.uid
+          );
         }
 
         // Only participants may read messages for this chat.
