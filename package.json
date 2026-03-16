@@ -30,6 +30,7 @@
     "@react-navigation/native-stack": "^7.3.27",
     "babel-plugin-module-resolver": "^5.0.2",
     "dom-helpers": "^5.2.1",
+    "dotenv": "^17.3.1",
     "expo": "^54.0.7",
     "expo-ads-admob": "^8.4.0",
     "expo-build-properties": "~1.0.9",

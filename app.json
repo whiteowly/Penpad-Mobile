@@ -1,27 +1,23 @@
 {
   "expo": {
     "name": "PenPad",
-    "slug": "penpad",
+    "slug": "penpad-todo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.jpg",
-    "scheme": "ToDoLisss",
+    "scheme": "todolisss",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
 
     "ios": {
-      "supportsTablet": true,
       "bundleIdentifier": "com.whiteowly.todolisss"
     },
     "android": {
-      "googleServicesFile": "./google-services.json",
       "package": "com.jer.todolisss",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.jpg",
         "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.whiteowly.todolisss"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +33,10 @@
         {
           "ios": {
             "useFrameworks": "static"
+          },
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.react.turbomodule.** { *; }"
           }
         }
       ]

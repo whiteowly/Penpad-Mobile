@@ -3,13 +3,12 @@ import { getAuth } from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAaTaGHJVq9ouy-9TbkeJ7xQ-f5GCh6u4g",
-  authDomain: "penpad-d7362.firebaseapp.com",
-  projectId: "penpad-d7362",
-  storageBucket: "penpad-d7362.appspot.com",
-  messagingSenderId: "923363544696",
-  appId: "1:923363544696:android:e7ebbe8d46a484719da78d",
-  
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
