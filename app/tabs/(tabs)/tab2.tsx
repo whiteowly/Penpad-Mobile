@@ -34,6 +34,7 @@ import { AlertCircleIcon } from '@/components/ui/icon';
 import React from 'react';
 import { Image } from '@/components/ui/image';
 import { KeyboardAvoidingView, Platform } from 'react-native';
+import { reserveUsername } from '@/lib/usernames';
 
 const isValidEmail = (value: string) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,6 +112,15 @@ export default function Tab2() {
           displayName: username || null,
           createdAt: serverTimestamp(),
         });
+        // Reserve the username mapping so users can be found by username.
+        if (username) {
+          try {
+            await reserveUsername(db, username, user.uid);
+          } catch (unErr: any) {
+            // USERNAME_TAKEN is possible if the name was grabbed between checks; non-fatal.
+            console.warn('Could not reserve username mapping:', unErr?.message ?? unErr);
+          }
+        }
       } catch (fireErr) {
         console.error('Failed to create user profile document:', fireErr);
         // Not fatal for signup flow; continue.

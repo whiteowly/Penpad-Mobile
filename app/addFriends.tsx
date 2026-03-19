@@ -44,9 +44,6 @@ const Main = () => {
   const db = useMemo(() => getFirestore(app), []);
   const uid = auth.currentUser?.uid ?? null;
 
-  const [searchText, setSearchText] = useState('');
-  const [searchResult, setSearchResult] = useState<{ uid: string; username?: string } | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
   const [emailSearchText, setEmailSearchText] = useState('');
   const [emailSearchResult, setEmailSearchResult] = useState<{ uid: string; email?: string; username?: string } | null>(null);
   const [isEmailSearching, setIsEmailSearching] = useState(false);
@@ -75,36 +72,6 @@ const Main = () => {
     });
     return () => unsub();
   }, [db, uid]);
-
-  const handleSearch = async () => {
-    setIsSearching(true);
-    setSearchResult(null);
-    try {
-      const key = normalizeUsername(searchText || '');
-      if (!key) {
-        setIsSearching(false);
-        return;
-      }
-      const ref = doc(db, 'usernames', key);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        setSearchResult(null);
-      } else {
-        const data = snap.data() as any;
-        if (data?.uid && data.uid !== uid) {
-          setSearchResult({ uid: data.uid, username: key });
-        } else {
-          // found self or missing uid
-          setSearchResult(null);
-        }
-      }
-    } catch (err) {
-      console.error('Search failed', err);
-      setSearchResult(null);
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   const handleEmailSearch = async () => {
     setIsEmailSearching(true);
@@ -285,6 +252,7 @@ const Main = () => {
         <Divider className="my-0 w-full" />
 
         <Box className="mt-2">
+          {/* Incoming Requests */}
           <Box>
             <Text size="md" className="mb-2">Incoming Requests</Text>
             {incomingRequests.length === 0 ? (
@@ -310,6 +278,7 @@ const Main = () => {
 
           <Divider className="my-4 w-full" />
 
+          {/* Search by Email */}
           <Box className="flex-0 items-start gap-2">
             <Text size="md" className="mb-2">Search by Email</Text>
             <HStack className="flex-row items-center gap-2">
@@ -330,18 +299,17 @@ const Main = () => {
                 <ButtonIcon as={SearchIcon} />
               </Button>
             </HStack>
-
           </Box>
           <Box className="mt-4">
             {emailSearchResult ? (
               <Box className="flex-row items-center justify-between">
-                <Text size="lg">{emailSearchResult.username ? `${emailSearchResult.username}` : emailSearchResult.email}</Text>
+                <Text size="lg">{emailSearchResult.username ?? emailSearchResult.email}</Text>
                 <Button variant="outline" className="bg-secondary-500 px-6 py-2 rounded-full" onPress={() => sendFriendRequest(emailSearchResult.uid)}>
                   <ButtonText>Send Request</ButtonText>
                 </Button>
               </Box>
             ) : (
-              emailSearchText ? <Text>No user found with that email</Text> : null
+              emailSearchTried && emailSearchText ? <Text>No user found with that email</Text> : null
             )}
 
             {emailSearchTried && emailSearchError ? (

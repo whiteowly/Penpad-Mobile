@@ -15,6 +15,7 @@ import { VStack } from '@/components/ui/vstack';
 import { Button, ButtonText } from '@/components/ui/button';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { app } from '../../../firebaseConfig';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Colors } from '@/constants/Colors';
 import { Icon, EyeIcon, EyeOffIcon } from '@/components/ui/icon';
 import { Image } from '@/components/ui/image';
@@ -69,14 +70,31 @@ export default function Tab1() {
     setStatusMessage(null);
     setStatusVariant(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const signedInUser = credential.user;
+      // Backfill profile doc for existing accounts that pre-date the profile creation code.
+      try {
+        const db = getFirestore(app);
+        await setDoc(
+          doc(db, 'users', signedInUser.uid),
+          {
+            email: signedInUser.email ?? null,
+            emailLowerCase: (signedInUser.email ?? '').toLowerCase(),
+            displayName: signedInUser.displayName ?? null,
+            username: signedInUser.displayName ?? null,
+          },
+          { merge: true }
+        );
+      } catch (profileErr) {
+        // Non-fatal; just log it.
+        console.warn('Could not backfill user profile:', profileErr);
+      }
       setPassword('');
       setStatusVariant('success');
       setStatusMessage('Signed in successfully. Redirecting...');
       router.replace('/tasks' as any);
     } catch (error) {
       console.error(error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
       setStatusVariant('error');
       setStatusMessage(`Check email or password. `);
     }

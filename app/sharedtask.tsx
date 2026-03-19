@@ -1062,6 +1062,12 @@ const Main = () => {
                         }}
                     >
                         <FabIcon as={MessageCircleMore} />
+                        {unreadCount > 0 && (
+                            <Box 
+                                className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border border-white" 
+                                style={{ position: 'absolute', top: 12, right: 12 }}
+                            />
+                        )}
                     </Fab>
                     
                     <Fab style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 50 }} size="xl" onPress={() => setShowModal(true)}>

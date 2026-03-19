@@ -4,8 +4,9 @@ service cloud.firestore {
 
     // usernames mapping: usernames/{normalizedUsername} -> { uid, createdAt }
     match /usernames/{username} {
-      // allow authenticated clients to read a single username doc
-      allow get, list: if false;
+      // allow authenticated clients to look up a single username doc (enables username search)
+      allow get: if request.auth != null;
+      allow list: if false;
 
       // Creating a username mapping is allowed only when the caller is the
       // same user as the uid stored in the document.
@@ -85,6 +86,9 @@ service cloud.firestore {
     match /users/{userId} {
       // allow other authenticated users to read a user's public profile (displayName, photoURL, username)
       allow get: if request.auth != null;
+
+      // allow users to create and update their own profile document
+      allow create, update: if request.auth != null && request.auth.uid == userId;
 
       // TEMPORARY: Allow authenticated clients to list/query the `users`
       // collection. This relaxes previous restrictions to unblock client
@@ -285,9 +289,18 @@ service cloud.firestore {
   // Allow creating a chat metadata doc if the authenticated user is
   // included in the provided participants array. This lets the client
   // create the chat document before sending the first message.
-  allow create: if request.auth != null
-        && request.resource.data.participants is list
-        && request.auth.uid in request.resource.data.participants;
+  // Also allow creating with a lastSeen-only payload (no participants) when
+  // the caller is one of the two UIDs encoded in the chatId ("uid1_uid2").
+  // This covers the case where setDoc({lastSeen:...}, {merge:true}) is called
+  // on a chat doc that does not exist yet (Firestore treats it as a create).
+  allow create: if request.auth != null && (
+    (request.resource.data.participants is list
+      && request.auth.uid in request.resource.data.participants)
+    ||
+    (request.resource.data.keys().hasOnly(['lastSeen'])
+      && (chatId.split('_')[0] == request.auth.uid
+          || chatId.split('_')[1] == request.auth.uid))
+  );
 
   // Allow reading chat metadata for authenticated users so clients can
   // check existence before creating. This is a small relaxation to
