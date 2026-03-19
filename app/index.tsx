@@ -7,6 +7,7 @@ import { useFonts, DancingScript_700Bold } from '@expo-google-fonts/dancing-scri
 import { useRouter } from 'expo-router';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { app } from '../firebaseConfig';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
 const iconImage = require('../assets/images/logo.jpg');
 
@@ -19,8 +20,27 @@ export default function Home() {
 
   React.useEffect(() => {
     const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUserState(user);
+      // Backfill profile doc for users who signed up before it was created,
+      // or who were already logged in when the rule was first deployed.
+      if (user) {
+        try {
+          const db = getFirestore(app);
+          await setDoc(
+            doc(db, 'users', user.uid),
+            {
+              email: user.email ?? null,
+              emailLowerCase: (user.email ?? '').toLowerCase(),
+              displayName: user.displayName ?? null,
+              username: user.displayName ?? null,
+            },
+            { merge: true }
+          );
+        } catch (e) {
+          console.warn('Profile backfill failed (non-fatal):', e);
+        }
+      }
     });
     return unsubscribe;
   }, []);

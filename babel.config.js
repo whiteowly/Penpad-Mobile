@@ -17,6 +17,8 @@ module.exports = function (api) {
         },
       ],
       'react-native-worklets/plugin',
+      // Strip console logs in production for smaller build size & safer exposure
+      ...(process.env.NODE_ENV === 'production' ? ['transform-remove-console'] : []),
     ],
   };
 };

@@ -45,6 +45,9 @@ const ChatPage = () => {
   // which message id is showing its timestamp (tapped)
   const [expandedMessageId, setExpandedMessageId] = useState<string | null>(null);
 
+  // cache chat metadata existence
+  const chatVerified = useRef<boolean>(false);
+
   // Helpers to parse and format timestamps
   const toDate = (ts: any): Date | null => {
     if (!ts) return null;
@@ -120,6 +123,7 @@ const ChatPage = () => {
     if (!myUid || !chatId) return;
     // ensure chat metadata exists and includes both participants
     const ensureChatExists = async () => {
+      if (chatVerified.current) return;
       try {
         if (!auth.currentUser) {
           const msg = 'Not authenticated when trying to create chat metadata';
@@ -129,23 +133,12 @@ const ChatPage = () => {
         const chatRef = doc(db, 'chats', chatId);
         const chatSnap = await getDoc(chatRef);
         if (!chatSnap.exists()) {
-          // create chat metadata. If this fails due to rules, we rethrow
-          // DEBUG: log the payload and current auth uid so we can inspect what the
-          // server sees and why rules may reject the write.
-          try {
-            console.log('DEBUG creating chat metadata', {
-              chatId,
-              participants: [myUid, targetUid],
-              authUid: auth.currentUser?.uid ?? null,
-            });
-          } catch (e) {
-            // ignore logging errors
-          }
           await setDoc(chatRef, {
             participants: [myUid, targetUid],
             createdAt: serverTimestamp(),
           });
         }
+        chatVerified.current = true;
       } catch (err: any) {
         // Provide more actionable logging so we can debug permission errors
         console.error('Failed to ensure chat exists', {
@@ -266,17 +259,12 @@ const ChatPage = () => {
     // ensure chat metadata exists before attempting to send
     try {
       const chatRef = doc(db, 'chats', chatId);
-      const chatSnap = await getDoc(chatRef);
-      if (!chatSnap.exists()) {
-        // DEBUG: log payload and auth before creating
-        try {
-          console.log('DEBUG create chat metadata (sendMessage path)', {
-            chatId,
-            participants: [myUid, targetUid],
-            authUid: auth.currentUser?.uid ?? null,
-          });
-        } catch (e) { }
-        await setDoc(chatRef, { participants: [myUid, targetUid], createdAt: serverTimestamp() });
+      if (!chatVerified.current) {
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+          await setDoc(chatRef, { participants: [myUid, targetUid], createdAt: serverTimestamp() });
+        }
+        chatVerified.current = true;
       }
     } catch (err: any) {
       // Log full error and surface to user with code/message to diagnose rules issues
@@ -290,14 +278,20 @@ const ChatPage = () => {
       return;
     }
     try {
-      await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      // clear text immediately for snappy feel
+      const trimmed = text.trim();
+      setText('');
+
+      addDoc(collection(db, 'chats', chatId, 'messages'), {
         fromUid: myUid,
         toUid: targetUid,
-        text: text.trim(),
+        text: trimmed,
         mediaUrl: null,
         createdAt: serverTimestamp(),
+      }).catch(err => {
+        console.error('Deferred failure to send message', err);
+        // optionally restore text if it failed
       });
-      setText('');
     } catch (err: any) {
       console.error('Failed to send message', {
         message: err?.message ?? err,
